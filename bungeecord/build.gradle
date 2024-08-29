@@ -1,0 +1,15 @@
+group = rootProject.group
+version = rootProject.version
+
+dependencies {
+    implementation project(':sdk')
+
+    compileOnly 'net.md-5:bungeecord-api:1.18-R0.1-SNAPSHOT'
+}
+
+shadowJar {
+    configurations = [project.configurations.runtimeClasspath]
+
+//    relocate 'example.relocate', 'net.mcmetrics.example.relocate' // Relocate this
+    minimize()
+}

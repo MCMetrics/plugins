@@ -1,0 +1,3 @@
+name: MCMetrics
+version: '${version}'
+main: net.mcmetrics.plugin.MCMetricsSpigotPlugin

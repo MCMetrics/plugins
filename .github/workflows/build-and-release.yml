@@ -1,14 +1,13 @@
-name: Build and Upload to GitHub Packages
+name: Build and Release
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
     steps:
       - uses: actions/checkout@v4
 
@@ -17,13 +16,6 @@ jobs:
         with:
           java-version: "17"
           distribution: "temurin"
-
-      - name: Cache Gradle packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-          restore-keys: ${{ runner.os }}-gradle
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -35,20 +27,43 @@ jobs:
         id: get_version
         run: echo "VERSION=$(./gradlew properties -q | grep "version:" | awk '{print $2}')" >> $GITHUB_OUTPUT
 
-      - name: Upload Bukkit JAR
-        uses: actions/upload-artifact@v3
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: bukkit-mcmetrics-${{ steps.get_version.outputs.VERSION }}
-          path: bukkit/build/libs/bukkit-mcmetrics-${{ steps.get_version.outputs.VERSION }}.jar
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          release_name: Release ${{ steps.get_version.outputs.VERSION }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Bukkit JAR
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./bukkit/build/libs/bukkit-mcmetrics-${{ steps.get_version.outputs.VERSION }}.jar
+          asset_name: bukkit-mcmetrics-${{ steps.get_version.outputs.VERSION }}.jar
+          asset_content_type: application/java-archive
 
       - name: Upload BungeeCord JAR
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: bungeecord-mcmetrics-${{ steps.get_version.outputs.VERSION }}
-          path: bungeecord/build/libs/bungeecord-mcmetrics-${{ steps.get_version.outputs.VERSION }}.jar
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./bungeecord/build/libs/bungeecord-mcmetrics-${{ steps.get_version.outputs.VERSION }}.jar
+          asset_name: bungeecord-mcmetrics-${{ steps.get_version.outputs.VERSION }}.jar
+          asset_content_type: application/java-archive
 
       - name: Upload Velocity JAR
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: velocity-mcmetrics-${{ steps.get_version.outputs.VERSION }}
-          path: velocity/build/libs/velocity-mcmetrics-${{ steps.get_version.outputs.VERSION }}.jar
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./velocity/build/libs/velocity-mcmetrics-${{ steps.get_version.outputs.VERSION }}.jar
+          asset_name: velocity-mcmetrics-${{ steps.get_version.outputs.VERSION }}.jar
+          asset_content_type: application/java-archive

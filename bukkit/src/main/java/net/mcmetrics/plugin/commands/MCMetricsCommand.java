@@ -1,9 +1,9 @@
 package net.mcmetrics.plugin.commands;
 
 import net.mcmetrics.plugin.MCMetricsSpigotPlugin;
-import net.mcmetrics.sdk.MCMetricsAPI;
-import net.mcmetrics.sdk.models.CustomEvent;
-import net.mcmetrics.sdk.models.Payment;
+import net.mcmetrics.shared.MCMetricsAPI;
+import net.mcmetrics.shared.models.CustomEvent;
+import net.mcmetrics.shared.models.Payment;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;

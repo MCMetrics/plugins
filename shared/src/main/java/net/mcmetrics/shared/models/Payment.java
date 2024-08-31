@@ -1,4 +1,4 @@
-package net.mcmetrics.sdk.models;
+package net.mcmetrics.shared.models;
 
 import java.util.Date;
 import java.util.UUID;

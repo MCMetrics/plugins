@@ -2,7 +2,7 @@ group = rootProject.group
 version = rootProject.version
 
 dependencies {
-    implementation project(':sdk')
+    implementation project(':shared')
 
     compileOnly 'org.spigotmc:spigot-api:1.19.4-R0.1-SNAPSHOT'
 }
@@ -10,6 +10,5 @@ dependencies {
 shadowJar {
     configurations = [project.configurations.runtimeClasspath]
 
-    //    relocate 'example.relocate', 'net.mcmetrics.example.relocate' // Relocate this
     minimize()
 }

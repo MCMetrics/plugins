@@ -1,4 +1,4 @@
-package net.mcmetrics.sdk.models;
+package net.mcmetrics.shared.models;
 
 import java.util.Date;
 import java.util.List;
@@ -10,7 +10,7 @@ public class Session {
     public Date session_start;
     public Date session_end;
     public String domain;
-    public Long afk_time_ms;
+    public Long afk_time_ms; //TODO: make this work
     public String ip_address;
     public List<ABTestExposure> ab_test_exposures;
 }

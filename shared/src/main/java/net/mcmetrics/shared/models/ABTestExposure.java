@@ -1,4 +1,4 @@
-package net.mcmetrics.sdk.models;
+package net.mcmetrics.shared.models;
 
 public class ABTestExposure {
     public String ab_test_id;

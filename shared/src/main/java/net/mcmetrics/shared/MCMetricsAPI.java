@@ -1,8 +1,8 @@
-package net.mcmetrics.sdk;
+package net.mcmetrics.shared;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.mcmetrics.sdk.models.*;
+import net.mcmetrics.shared.models.*;
 import okhttp3.*;
 
 import java.io.IOException;

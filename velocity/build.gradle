@@ -10,7 +10,7 @@ blossom {
 }
 
 dependencies {
-    implementation project(':sdk')
+    implementation project(':shared')
 
     compileOnly 'com.velocitypowered:velocity-api:3.1.1'
     annotationProcessor 'com.velocitypowered:velocity-api:3.1.1'
@@ -19,6 +19,5 @@ dependencies {
 shadowJar {
     configurations = [project.configurations.runtimeClasspath]
 
-    //    relocate 'example.relocate', 'net.mcmetrics.example.relocate' // Relocate this
     minimize()
 }

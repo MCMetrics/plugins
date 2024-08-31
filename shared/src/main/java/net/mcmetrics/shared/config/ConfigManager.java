@@ -1,4 +1,4 @@
-package net.mcmetrics.sdk.config;
+package net.mcmetrics.shared.config;
 
 import dev.dejvokep.boostedyaml.YamlDocument;
 import dev.dejvokep.boostedyaml.dvs.versioning.BasicVersioning;

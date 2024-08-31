@@ -1,6 +1,6 @@
 rootProject.name = 'mcmetrics'
 
-include 'sdk'
+include 'shared'
 include 'bukkit'
 include 'bungeecord'
 include 'velocity'

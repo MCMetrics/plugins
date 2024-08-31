@@ -1,7 +1,7 @@
 package net.mcmetrics.plugin;
 
-import net.mcmetrics.sdk.MCMetricsAPI;
-import net.mcmetrics.sdk.models.Session;
+import net.mcmetrics.shared.MCMetricsAPI;
+import net.mcmetrics.shared.models.Session;
 
 import java.util.ArrayList;
 import java.util.List;

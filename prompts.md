@@ -1,8 +1,8 @@
 # General
 
-The current project is a monorepo containing 3 Minecraft plugins and a shared SDK:
+The current project is a monorepo containing 3 Minecraft plugins and a shared module:
 
-- `sdk`
+- `shared`
 - `bukkit`
 - `bungeecord`
 - `velocity`

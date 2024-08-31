@@ -2,9 +2,9 @@ package net.mcmetrics.plugin;
 
 import net.mcmetrics.plugin.commands.MCMetricsCommand;
 import net.mcmetrics.plugin.listeners.PlayerSessionListener;
-import net.mcmetrics.sdk.MCMetricsAPI;
-import net.mcmetrics.sdk.models.ServerPing;
-import net.mcmetrics.sdk.models.Session;
+import net.mcmetrics.shared.MCMetricsAPI;
+import net.mcmetrics.shared.models.ServerPing;
+import net.mcmetrics.shared.models.Session;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 

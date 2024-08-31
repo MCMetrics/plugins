@@ -1,19 +1,16 @@
 package net.mcmetrics.plugin;
 
-import net.mcmetrics.sdk.ExampleSDK;
-import net.mcmetrics.sdk.config.ConfigManager;
+import net.mcmetrics.shared.config.ConfigManager;
 import net.md_5.bungee.api.plugin.Plugin;
 
 import java.io.IOException;
 import java.util.logging.Logger;
 
 public final class MCMetricsBungeePlugin extends Plugin {
-    private ExampleSDK sdk;
     private ConfigManager configManager;
 
     @Override
     public void onEnable() {
-        sdk = new ExampleSDK();
         configManager = new ConfigManager();
 
         Logger logger = getLogger();
@@ -28,7 +25,6 @@ public final class MCMetricsBungeePlugin extends Plugin {
             return;
         }
 
-        sdk.test();
     }
 
     @Override

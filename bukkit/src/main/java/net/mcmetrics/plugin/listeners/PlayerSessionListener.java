@@ -2,7 +2,7 @@ package net.mcmetrics.plugin.listeners;
 
 import net.mcmetrics.plugin.MCMetricsSpigotPlugin;
 import net.mcmetrics.plugin.SessionManager;
-import net.mcmetrics.sdk.models.Session;
+import net.mcmetrics.shared.models.Session;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;

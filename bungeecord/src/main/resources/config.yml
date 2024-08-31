@@ -1,4 +1,11 @@
 config-version: 1
 
-example:
-  value: "This is an example configuration value"
+server:
+  id: ""
+  key: ""
+
+exempt:
+  players: []
+
+# Permission node for admin commands
+admin-permission: "mcmetrics.admin"

@@ -9,7 +9,11 @@ import okhttp3.*;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
+import java.time.Instant;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class MCMetricsAPI {
     private static final String API_BASE_URL = "https://ingest.mcmetrics.net/v1";
@@ -19,6 +23,11 @@ public class MCMetricsAPI {
     private final String serverKey;
     private final Logger logger;
 
+    private final AtomicInteger requestCount;
+    private final AtomicInteger errorCount;
+    private final Queue<Instant> requestTimes;
+    private final Queue<Instant> errorTimes;
+
     public MCMetricsAPI(String serverId, String serverKey, Logger logger) {
         this.serverId = serverId;
         this.serverKey = serverKey;
@@ -27,6 +36,10 @@ public class MCMetricsAPI {
         this.gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
                 .create();
+        this.requestCount = new AtomicInteger(0);
+        this.errorCount = new AtomicInteger(0);
+        this.requestTimes = new ConcurrentLinkedQueue<>();
+        this.errorTimes = new ConcurrentLinkedQueue<>();
     }
 
     public CompletableFuture<Void> insertServerPing(ServerPing serverPing) {
@@ -57,9 +70,12 @@ public class MCMetricsAPI {
 
         CompletableFuture<Void> future = new CompletableFuture<>();
 
+        incrementRequestCount();
+
         httpClient.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
+                incrementErrorCount();
                 future.completeExceptionally(new MCMetricsException("NETWORK_ERROR", "Network error: " + e.getMessage(), logger));
             }
 
@@ -67,6 +83,7 @@ public class MCMetricsAPI {
             public void onResponse(Call call, Response response) throws IOException {
                 try (ResponseBody responseBody = response.body()) {
                     if (!response.isSuccessful()) {
+                        incrementErrorCount();
                         String errorBody = responseBody != null ? responseBody.string() : "No error body";
                         MCMetricsException exception = parseErrorResponse(errorBody);
                         future.completeExceptionally(exception);
@@ -97,6 +114,35 @@ public class MCMetricsAPI {
         } catch (Exception e) {
             return new MCMetricsException("PARSE_ERROR", "Failed to parse error response: " + errorBody, logger);
         }
+    }
+
+    private void incrementRequestCount() {
+        requestCount.incrementAndGet();
+        requestTimes.add(Instant.now());
+        cleanupOldEntries(requestTimes);
+    }
+
+    private void incrementErrorCount() {
+        errorCount.incrementAndGet();
+        errorTimes.add(Instant.now());
+        cleanupOldEntries(errorTimes);
+    }
+
+    private void cleanupOldEntries(Queue<Instant> queue) {
+        Instant oneHourAgo = Instant.now().minusSeconds(3600);
+        while (!queue.isEmpty() && queue.peek().isBefore(oneHourAgo)) {
+            queue.poll();
+        }
+    }
+
+    public int getRequestCount() {
+        cleanupOldEntries(requestTimes);
+        return requestTimes.size();
+    }
+
+    public int getErrorCount() {
+        cleanupOldEntries(errorTimes);
+        return errorTimes.size();
     }
 
     public static class MCMetricsException extends Exception {

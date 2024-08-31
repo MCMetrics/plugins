@@ -5,11 +5,13 @@ import net.mcmetrics.plugin.listeners.PlayerSessionListener;
 import net.mcmetrics.shared.MCMetricsAPI;
 import net.mcmetrics.shared.models.ServerPing;
 import net.mcmetrics.shared.models.Session;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 public class MCMetricsSpigotPlugin extends JavaPlugin {
@@ -20,6 +22,7 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
         initializeAPI();
+        sessionManager = new SessionManager(api);
         getServer().getPluginManager().registerEvents(new PlayerSessionListener(this, sessionManager), this);
         getCommand("mcmetrics").setExecutor(new MCMetricsCommand(this));
         startServerPingTask();
@@ -37,13 +40,13 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         }
 
         api = new MCMetricsAPI(serverId, serverKey, logger);
-        sessionManager = new SessionManager(api);
     }
 
     @Override
     public void onDisable() {
         if (sessionManager != null) {
             List<Session> remainingSessions = sessionManager.endAllSessions();
+            getLogger().info("Ending " + remainingSessions.size() + " remaining sessions...");
             for (Session session : remainingSessions) {
                 session.session_end = new Date();
                 api.insertSession(session).join(); // Wait for each session to be inserted
@@ -64,7 +67,6 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
                 ServerPing ping = new ServerPing();
                 ping.time = new Date();
                 ping.player_count = getServer().getOnlinePlayers().size();
-                // we get the bedrock player count by looping through each online player uuid. If it's  LIKE '00000000-0000-0000%', it's a bedrock player
                 ping.bedrock_player_count = (int) getServer().getOnlinePlayers().stream().map(player -> player.getUniqueId().toString()).filter(uuid -> uuid.startsWith("00000000-0000-0000")).count();
                 ping.java_player_count = ping.player_count - ping.bedrock_player_count;
                 ping.tps = 20.0; //TODO: Implement actual TPS calculation
@@ -83,9 +85,26 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         return api;
     }
 
+    public SessionManager getSessionManager() {
+        return sessionManager;
+    }
+
     public void reloadPlugin() {
         reloadConfig();
         initializeAPI();
         getLogger().info("MCMetrics configuration reloaded.");
+    }
+
+    public int getActiveSessionCount() {
+        return sessionManager.getActiveSessionCount();
+    }
+
+    public boolean isBedrockPlayer(Player player) {
+        return player.getUniqueId().toString().startsWith("00000000-0000-0000");
+    }
+
+    public long getAFKTime(UUID playerId) {
+        // TODO: Implement AFK time tracking
+        return 0;
     }
 }

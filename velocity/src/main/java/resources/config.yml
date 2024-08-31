@@ -1,0 +1,6 @@
+config-version: 1
+
+example:
+  value: "This is an example configuration value"
+
+# Add more configuration options as needed

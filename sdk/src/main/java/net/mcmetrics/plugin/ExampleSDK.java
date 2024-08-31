@@ -1,4 +1,4 @@
-package net.mcmetrics.sdk;
+package net.mcmetrics.plugin;
 
 public class ExampleSDK {
 

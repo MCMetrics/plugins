@@ -10,7 +10,6 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
 public class MCMetricsSpigotPlugin extends JavaPlugin {
@@ -19,81 +18,63 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // Save default config
         saveDefaultConfig();
+        initializeAPI();
+        getServer().getPluginManager().registerEvents(new PlayerSessionListener(this, sessionManager), this);
+        getCommand("mcmetrics").setExecutor(new MCMetricsCommand(this));
+        startServerPingTask();
+        getLogger().info("MCMetrics plugin enabled successfully!");
+    }
 
-        // Initialize API
+    public void initializeAPI() {
         String serverId = getConfig().getString("server.id");
         String serverKey = getConfig().getString("server.key");
         Logger logger = getLogger();
 
-        if (serverId == null || serverKey == null) {
-            logger.severe("Server ID or Server Key not set in config.yml. Plugin disabled.");
-            getServer().getPluginManager().disablePlugin(this);
+        if (serverId == null || serverKey == null || serverId.isEmpty() || serverKey.isEmpty()) {
+            logger.warning("Server ID or Server Key not set in config.yml. Please use /mcmetrics setup to configure the plugin.");
             return;
         }
 
         api = new MCMetricsAPI(serverId, serverKey, logger);
         sessionManager = new SessionManager(api);
-
-        // Register event listeners
-        getServer().getPluginManager().registerEvents(new PlayerSessionListener(this, sessionManager), this);
-
-        // Register commands
-        getCommand("mcmetrics").setExecutor(new MCMetricsCommand(this, api));
-
-        // Start server ping task
-        startServerPingTask();
-
-        logger.info("MCMetrics plugin enabled successfully!");
     }
 
     @Override
     public void onDisable() {
-        getLogger().info("MCMetrics plugin is being disabled. Uploading remaining sessions...");
-
-        List<Session> remainingSessions = sessionManager.endAllSessions();
-        CompletableFuture<Void>[] uploadFutures = new CompletableFuture[remainingSessions.size()];
-
-        for (int i = 0; i < remainingSessions.size(); i++) {
-            Session session = remainingSessions.get(i);
-            session.session_end = new Date(); // players are getting kicked, so end the session now
-
-            uploadFutures[i] = api.insertSession(session)
-                    .thenRun(() -> getLogger().info("Session uploaded for player: " + session.player_uuid))
-                    .exceptionally(e -> {
-                        getLogger().severe("Failed to upload session for player " + session.player_uuid + ": " + e.getMessage());
-                        return null;
-                    });
+        if (sessionManager != null) {
+            List<Session> remainingSessions = sessionManager.endAllSessions();
+            for (Session session : remainingSessions) {
+                session.session_end = new Date();
+                api.insertSession(session).join(); // Wait for each session to be inserted
+            }
         }
-
-        // Wait for all uploads to complete
-        CompletableFuture.allOf(uploadFutures).join();
-
-        getLogger().info("All remaining sessions have been uploaded. MCMetrics plugin disabled.");
+        getLogger().info("MCMetrics plugin disabled.");
     }
 
     private void startServerPingTask() {
         new BukkitRunnable() {
             @Override
             public void run() {
+                if (api == null) {
+                    getLogger().warning("MCMetrics API is not initialized. Please use /mcmetrics setup to configure the plugin.");
+                    return;
+                }
+
                 ServerPing ping = new ServerPing();
                 ping.time = new Date();
                 ping.player_count = getServer().getOnlinePlayers().size();
-                ping.java_player_count = ping.player_count; // Assuming all are Java players
-                ping.bedrock_player_count = 0; // Assuming no Bedrock players
-                ping.tps = 20.0; //TODO:
-                ping.cpu_percent = -1; //TODO:
-                ping.ram_percent = 0.0; //TODO:
-                ping.entities_loaded = 0; //TODO;
-                ping.chunks_loaded = 0; //TODO;
+                // we get the bedrock player count by looping through each online player uuid. If it's  LIKE '00000000-0000-0000%', it's a bedrock player
+                ping.bedrock_player_count = (int) getServer().getOnlinePlayers().stream().map(player -> player.getUniqueId().toString()).filter(uuid -> uuid.startsWith("00000000-0000-0000")).count();
+                ping.java_player_count = ping.player_count - ping.bedrock_player_count;
+                ping.tps = 20.0; //TODO: Implement actual TPS calculation
+                ping.mspt = 0.0; //TODO: Implement actual MSPT calculation
+                ping.cpu_percent = 0.0; //TODO: Implement CPU usage calculation
+                ping.ram_percent = 0.0; //TODO: Implement RAM usage calculation
+                ping.entities_loaded = 0;
+                ping.chunks_loaded = 0;
 
-                api.insertServerPing(ping)
-                        .thenRun(() -> getLogger().info("Server ping sent successfully"))
-                        .exceptionally(e -> {
-                            getLogger().severe("Failed to send server ping: " + e.getMessage());
-                            return null;
-                        });
+                api.insertServerPing(ping).thenRun(() -> getLogger().info("Server ping recorded successfully."));
             }
         }.runTaskTimerAsynchronously(this, 0L, 20L * 10); // Run every 10 seconds
     }
@@ -102,7 +83,9 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         return api;
     }
 
-    public SessionManager getSessionManager() {
-        return sessionManager;
+    public void reloadPlugin() {
+        reloadConfig();
+        initializeAPI();
+        getLogger().info("MCMetrics configuration reloaded.");
     }
 }

@@ -15,17 +15,15 @@ import java.util.UUID;
 public class MCMetricsCommand implements CommandExecutor {
 
     private final MCMetricsSpigotPlugin plugin;
-    private final MCMetricsAPI api;
 
-    public MCMetricsCommand(MCMetricsSpigotPlugin plugin, MCMetricsAPI api) {
+    public MCMetricsCommand(MCMetricsSpigotPlugin plugin) {
         this.plugin = plugin;
-        this.api = api;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length < 1) {
-            sender.sendMessage("Usage: /mcmetrics <payment|customevent> ...");
+            sendHelpMessage(sender);
             return true;
         }
 
@@ -34,8 +32,15 @@ public class MCMetricsCommand implements CommandExecutor {
                 return handlePayment(sender, args);
             case "customevent":
                 return handleCustomEvent(sender, args);
+            case "reload":
+                return handleReload(sender);
+            case "setup":
+                return handleSetup(sender, args);
+            case "help":
+                sendHelpMessage(sender);
+                return true;
             default:
-                sender.sendMessage("Unknown subcommand. Use 'payment' or 'customevent'.");
+                sender.sendMessage("Unknown subcommand. Use '/mcmetrics help' for a list of commands.");
                 return true;
         }
     }
@@ -43,6 +48,12 @@ public class MCMetricsCommand implements CommandExecutor {
     private boolean handlePayment(CommandSender sender, String[] args) {
         if (args.length != 6) {
             sender.sendMessage("Usage: /mcmetrics payment <tebex|craftingstore> <player_uuid> <transaction_id> <amount> <currency>");
+            return true;
+        }
+
+        MCMetricsAPI api = plugin.getApi();
+        if (api == null) {
+            sender.sendMessage("MCMetrics is not properly configured. Please use '/mcmetrics setup' to configure the plugin.");
             return true;
         }
 
@@ -57,7 +68,7 @@ public class MCMetricsCommand implements CommandExecutor {
         api.insertPayment(payment)
                 .thenRun(() -> sender.sendMessage("Payment recorded successfully."))
                 .exceptionally(e -> {
-                    sender.sendMessage("Failed to record payment: " + e.getMessage());
+                    sender.sendMessage("Failed to record payment. Check console for details.");
                     return null;
                 });
 
@@ -67,6 +78,12 @@ public class MCMetricsCommand implements CommandExecutor {
     private boolean handleCustomEvent(CommandSender sender, String[] args) {
         if (args.length < 3) {
             sender.sendMessage("Usage: /mcmetrics customevent <player_uuid> <event_type> [key1=value1 key2=value2 ...]");
+            return true;
+        }
+
+        MCMetricsAPI api = plugin.getApi();
+        if (api == null) {
+            sender.sendMessage("MCMetrics is not properly configured. Please use '/mcmetrics setup' to configure the plugin.");
             return true;
         }
 
@@ -86,10 +103,53 @@ public class MCMetricsCommand implements CommandExecutor {
         api.insertCustomEvent(event)
                 .thenRun(() -> sender.sendMessage("Custom event recorded successfully."))
                 .exceptionally(e -> {
-                    sender.sendMessage("Failed to record custom event: " + e.getMessage());
+                    sender.sendMessage("Failed to record custom event. Check console for details.");
                     return null;
                 });
 
         return true;
+    }
+
+    private boolean handleReload(CommandSender sender) {
+        if (!sender.hasPermission("mcmetrics.admin")) {
+            sender.sendMessage("You don't have permission to use this command.");
+            return true;
+        }
+
+        plugin.reloadPlugin();
+        sender.sendMessage("MCMetrics configuration reloaded.");
+        return true;
+    }
+
+    private boolean handleSetup(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("mcmetrics.admin")) {
+            sender.sendMessage("You don't have permission to use this command.");
+            return true;
+        }
+
+        if (args.length != 3) {
+            sender.sendMessage("Usage: /mcmetrics setup <server_id> <server_key>");
+            return true;
+        }
+
+        String serverId = args[1];
+        String serverKey = args[2];
+
+        plugin.getConfig().set("server.id", serverId);
+        plugin.getConfig().set("server.key", serverKey);
+        plugin.saveConfig();
+        plugin.reloadPlugin();
+
+        sender.sendMessage("MCMetrics configuration updated and reloaded.");
+        return true;
+    }
+
+    private void sendHelpMessage(CommandSender sender) {
+        sender.sendMessage("MCMetrics Commands:");
+        sender.sendMessage("/mcmetrics help - Show this help message");
+        sender.sendMessage("/mcmetrics setup <server_id> <server_key> - Configure the plugin");
+        sender.sendMessage("/mcmetrics reload - Reload the configuration");
+        sender.sendMessage("/mcmetrics payment <platform> <player_uuid> <transaction_id> <amount> <currency> - Record a payment");
+        sender.sendMessage("/mcmetrics customevent <player_uuid> <event_type> [key1=value1 key2=value2 ...] - Record a custom event");
     }
 }

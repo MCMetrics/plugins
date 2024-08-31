@@ -2,6 +2,8 @@ package net.mcmetrics.shared;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import net.mcmetrics.shared.models.*;
 import okhttp3.*;
 
@@ -58,8 +60,7 @@ public class MCMetricsAPI {
         httpClient.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                logger.severe("Error making request to " + endpoint + ": " + e.getMessage());
-                future.completeExceptionally(e);
+                future.completeExceptionally(new MCMetricsException("NETWORK_ERROR", "Network error: " + e.getMessage(), logger));
             }
 
             @Override
@@ -67,7 +68,8 @@ public class MCMetricsAPI {
                 try (ResponseBody responseBody = response.body()) {
                     if (!response.isSuccessful()) {
                         String errorBody = responseBody != null ? responseBody.string() : "No error body";
-                        future.completeExceptionally(new IOException("Unexpected code " + response + ", body: " + errorBody));
+                        MCMetricsException exception = parseErrorResponse(errorBody);
+                        future.completeExceptionally(exception);
                     } else {
                         future.complete(null);
                     }
@@ -76,5 +78,52 @@ public class MCMetricsAPI {
         });
 
         return future;
+    }
+
+    private MCMetricsException parseErrorResponse(String errorBody) {
+        try {
+            JsonObject jsonObject = JsonParser.parseString(errorBody).getAsJsonObject();
+            String error = jsonObject.get("error").getAsString();
+
+            if (error.contains("AUTH_INVALID") || error.contains("AUTH_MISSING")) {
+                return new MCMetricsException("AUTH_ERROR", error, logger);
+            } else if (error.contains("RATE_LIMIT")) {
+                return new MCMetricsException("RATE_LIMIT", error, logger);
+            } else if (error.contains("MISC_ERROR")) {
+                return new MCMetricsException("MISC_ERROR", error, logger);
+            } else {
+                return new MCMetricsException("UNKNOWN_ERROR", error, logger);
+            }
+        } catch (Exception e) {
+            return new MCMetricsException("PARSE_ERROR", "Failed to parse error response: " + errorBody, logger);
+        }
+    }
+
+    public static class MCMetricsException extends Exception {
+        public MCMetricsException(String errorType, String message, Logger logger) {
+            super(message);
+
+            // use the logger to log the error message, based on the error type
+            switch (errorType) {
+                case "NETWORK_ERROR":
+                    logger.severe("A network error occurred while making a request to the MCMetrics API. Network error: " + message);
+                    break;
+                case "AUTH_ERROR":
+                    logger.warning("A network error occurred while making a request to the MCMetrics API. Did you run the /mcmetrics setup command? Error: " + message);
+                    break;
+                case "RATE_LIMIT":
+                    logger.warning("API rate limit exceeded while making a request to the MCMetrics API: " + message);
+                    break;
+                case "MISC_ERROR":
+                    logger.severe("A miscellaneous error occurred while making a request to the MCMetrics API: " + message);
+                    break;
+                case "UNKNOWN_ERROR":
+                    logger.severe("Unknown error occurred while making a request to the MCMetrics API: " + message);
+                    break;
+                case "PARSE_ERROR":
+                    logger.severe("Failed to parse error response from the MCMetrics API: " + message);
+                    break;
+            }
+        }
     }
 }

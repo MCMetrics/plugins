@@ -1,6 +1,7 @@
 package net.mcmetrics.plugin;
 
-import net.mcmetrics.plugin.config.ConfigManager;
+import net.mcmetrics.sdk.ExampleSDK;
+import net.mcmetrics.sdk.config.ConfigManager;
 import net.md_5.bungee.api.plugin.Plugin;
 
 import java.io.IOException;
@@ -27,7 +28,7 @@ public final class MCMetricsBungeePlugin extends Plugin {
             return;
         }
 
-        sdk.doSomething();
+        sdk.test();
     }
 
     @Override

@@ -1,10 +1,11 @@
-package net.mcmetrics.plugin;
+package net.mcmetrics.sdk;
 
 public class ExampleSDK {
 
     public ExampleSDK() {}
 
-    public void doSomething() {
+    //TODO: delete
+    public void test() {
         System.out.println("[Shared] Hello World!");
     }
 }

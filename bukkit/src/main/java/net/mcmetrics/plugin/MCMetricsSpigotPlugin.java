@@ -1,7 +1,8 @@
 package net.mcmetrics.plugin;
 
 import net.mcmetrics.plugin.command.MCMetricsCommand;
-import net.mcmetrics.plugin.config.ConfigManager;
+import net.mcmetrics.sdk.ExampleSDK;
+import net.mcmetrics.sdk.config.ConfigManager;
 import net.mcmetrics.plugin.payment.PaymentManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -37,7 +38,7 @@ public final class MCMetricsSpigotPlugin extends JavaPlugin {
         // Register commands
         getCommand("mcmetrics").setExecutor(new MCMetricsCommand(this));
 
-        sdk.doSomething();
+        sdk.test();
     }
 
     @Override

@@ -1,6 +1,7 @@
 package net.mcmetrics.plugin;
 
-import net.mcmetrics.plugin.config.ConfigManager;
+import net.mcmetrics.sdk.ExampleSDK;
+import net.mcmetrics.sdk.config.ConfigManager;
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
@@ -54,7 +55,7 @@ public final class MCMetricsVelocityPlugin {
             return;
         }
 
-        exampleSDK.doSomething();
+        exampleSDK.test();
     }
 
     @Subscribe

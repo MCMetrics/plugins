@@ -1,3 +1,8 @@
 name: MCMetrics
 version: '${version}'
 main: net.mcmetrics.plugin.MCMetricsSpigotPlugin
+api-version: '1.13'
+commands:
+  mcmetrics:
+    description: MCMetrics admin commands
+    usage: /<command> [reload|setup|payment]

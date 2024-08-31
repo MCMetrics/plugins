@@ -24,7 +24,7 @@ MCMetrics provides you the insights and tools you need to improve your server's 
 - **Retention**: Figure out when and why players are leaving your server and how to keep them engaged.
 - **Monetization**: Understand your player spending behavior and increase the average revenue per user.
 
-Read more about MCMetrics [here](https://mcmetrics.net/about).
+Read more about MCMetrics [here](https://mcmetrics.net).
 
 ## ✨ Features
 

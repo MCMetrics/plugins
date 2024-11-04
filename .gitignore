@@ -13,3 +13,5 @@ ignore/
 !gradle/wrapper/gradle-wrapper.properties
 !gradlew
 !gradlew.bat
+
+**/bin/

@@ -10,6 +10,7 @@ import dev.dejvokep.boostedyaml.settings.updater.UpdaterSettings;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,6 +86,28 @@ public class ConfigManager {
         YamlDocument config = configs.get(name);
         if (config != null) {
             config.set(path, value);
+        } else {
+            throw new IllegalArgumentException("Config '" + name + "' not found");
+        }
+    }
+
+    public List<Map<String, Object>> getCustomEvents(String name) {
+        YamlDocument config = configs.get(name);
+        if (config != null) {
+            List<Map<?, ?>> rawList = config.getMapList("custom-events");
+            List<Map<String, Object>> result = new ArrayList<>();
+            
+            for (Map<?, ?> rawMap : rawList) {
+                Map<String, Object> typedMap = new HashMap<>();
+                for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+                    if (entry.getKey() instanceof String) {
+                        typedMap.put((String) entry.getKey(), entry.getValue());
+                    }
+                }
+                result.add(typedMap);
+            }
+            
+            return result;
         } else {
             throw new IllegalArgumentException("Config '" + name + "' not found");
         }

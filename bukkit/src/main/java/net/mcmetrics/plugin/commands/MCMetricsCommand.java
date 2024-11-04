@@ -13,6 +13,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
@@ -30,6 +31,11 @@ public class MCMetricsCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!sender.hasPermission(plugin.getConfigManager().getString("main", "mcmetrics.admin"))) {
+            sender.sendMessage(colorize("&cYou don't have permission to use this command."));
+            return true;
+        }
+
         if (args.length < 1) {
             sendHelpMessage(sender);
             return true;
@@ -59,7 +65,7 @@ public class MCMetricsCommand implements CommandExecutor {
 
     private boolean handlePayment(CommandSender sender, String[] args) {
         if (args.length != 6) {
-            sender.sendMessage(colorize("&cUsage: /mcmetrics payment <tebex|craftingstore> <player_uuid> <transaction_id> <amount> <currency>"));
+            sender.sendMessage(colorize("&cUsage: /mcmetrics payment <platform> <player_uuid> <transaction_id> <amount> <currency>"));
             return true;
         }
 
@@ -123,45 +129,32 @@ public class MCMetricsCommand implements CommandExecutor {
     }
 
     private boolean handleReload(CommandSender sender) {
-        if (!sender.hasPermission("mcmetrics.admin")) {
-            sender.sendMessage(colorize("&cYou don't have permission to use this command."));
-            return true;
-        }
-
         plugin.reloadPlugin();
         sender.sendMessage(colorize(PRIMARY_COLOR + "MCMetrics configuration reloaded."));
         return true;
     }
 
     private boolean handleSetup(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("mcmetrics.admin")) {
-            sender.sendMessage(colorize("&cYou don't have permission to use this command."));
-            return true;
-        }
-
         if (args.length != 3) {
             sender.sendMessage(colorize("&cUsage: /mcmetrics setup <server_id> <server_key>"));
             return true;
         }
 
-        String serverId = args[1];
-        String serverKey = args[2];
+        try {
+            plugin.getConfigManager().set("main", "server.id", args[1]);
+            plugin.getConfigManager().set("main", "server.key", args[2]);
+            plugin.getConfigManager().saveConfig("main");
+            plugin.reloadPlugin();
+            sender.sendMessage(colorize(PRIMARY_COLOR + "MCMetrics configuration updated and reloaded."));
+        } catch (IOException e) {
+            sender.sendMessage(colorize("&cFailed to update configuration. Check console for details."));
+            plugin.getLogger().severe("Failed to update configuration: " + e.getMessage());
+        }
 
-        plugin.getConfig().set("server.id", serverId);
-        plugin.getConfig().set("server.key", serverKey);
-        plugin.saveConfig();
-        plugin.reloadPlugin();
-
-        sender.sendMessage(colorize(PRIMARY_COLOR + "MCMetrics configuration updated and reloaded."));
         return true;
     }
 
     private boolean handleStatus(CommandSender sender) {
-        if (!sender.hasPermission("mcmetrics.admin")) {
-            sender.sendMessage(colorize("&cYou don't have permission to use this command."));
-            return true;
-        }
-
         MCMetricsAPI api = plugin.getApi();
         if (api == null) {
             sender.sendMessage(colorize("&cMCMetrics is not properly configured. Please use '/mcmetrics setup' to configure the plugin."));
@@ -178,11 +171,6 @@ public class MCMetricsCommand implements CommandExecutor {
     }
 
     private boolean handleInfo(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("mcmetrics.admin")) {
-            sender.sendMessage(colorize("&cYou don't have permission to use this command."));
-            return true;
-        }
-
         if (args.length != 2) {
             sender.sendMessage(colorize("&cUsage: /mcmetrics info <player name or uuid>"));
             return true;
@@ -217,7 +205,7 @@ public class MCMetricsCommand implements CommandExecutor {
         sender.sendMessage(colorize("&7Session start: &f" + sdf.format(session.session_start)));
         sender.sendMessage(colorize("&7Domain: &f" + session.domain));
         sender.sendMessage(colorize("&7Player type: &f" + (plugin.isBedrockPlayer(target) ? "Bedrock" : "Java")));
-        sender.sendMessage(colorize("&7AFK time: &f" + plugin.getAFKTime(playerId) + " seconds")); // TODO: Implement proper AFK time formatting
+        sender.sendMessage(colorize("&7AFK time: &f" + plugin.getAFKTime(playerId) + " seconds"));
         sender.sendMessage(colorize("&7IP Address: &f" + session.ip_address));
 
         Map<String, Integer> groupedEvents = sessionManager.getGroupedCustomEvents(playerId);

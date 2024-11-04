@@ -11,6 +11,7 @@ import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 public class PlayerSessionListener implements Listener {
@@ -52,8 +53,6 @@ public class PlayerSessionListener implements Listener {
             plugin.getLogger().warning("Player joined, but could not find session: " + playerId);
             return;
         }
-
-        // You might want to add more data to the session here if needed
     }
 
     @EventHandler
@@ -72,15 +71,18 @@ public class PlayerSessionListener implements Listener {
         session.session_end = new Date();
 
         plugin.getApi().insertSession(session)
-                .thenRun(() -> plugin.getLogger().info("Session uploaded for player: " + playerId))
-                .exceptionally(e -> {
-                    plugin.getLogger().severe("Failed to upload session for player " + playerId + ": " + e.getMessage());
-                    return null;
-                });
+            .thenRun(() -> plugin.getLogger().info("Session uploaded for player: " + playerId))
+            .exceptionally(e -> {
+                plugin.getLogger().severe("Failed to upload session for player " + playerId + ": " + e.getMessage());
+                return null;
+            });
     }
 
     private boolean isExempt(Player player) {
-        return plugin.getConfig().getStringList("exempt.players").contains(player.getName()) ||
-                plugin.getConfig().getStringList("exempt.players").contains(player.getUniqueId().toString());
+        List<?> exemptPlayers = plugin.getConfigManager().getList("main", "exempt.players");
+        return exemptPlayers != null && (
+            exemptPlayers.contains(player.getName()) ||
+            exemptPlayers.contains(player.getUniqueId().toString())
+        );
     }
 }

@@ -21,8 +21,5 @@ custom-events:
 exempt:
   players: []
 
-# Permission node for admin commands
-admin-permission: "mcmetrics.admin"
-
 # Don't change this value
 config-version: 2

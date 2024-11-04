@@ -7,15 +7,11 @@ import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.api.plugin.Command;
-import net.md_5.bungee.config.Configuration;
-import net.md_5.bungee.config.ConfigurationProvider;
-import net.md_5.bungee.config.YamlConfiguration;
 import net.mcmetrics.shared.MCMetricsAPI;
 import net.mcmetrics.shared.models.CustomEvent;
 import net.mcmetrics.shared.models.Payment;
 import net.mcmetrics.shared.models.Session;
 
-import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -35,6 +31,11 @@ public class MCMetricsCommand extends Command {
 
     @Override
     public void execute(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("mcmetrics.admin")) {
+            sender.sendMessage(new TextComponent(colorize("&cYou don't have permission to use this command.")));
+            return;
+        }
+
         if (args.length < 1) {
             sendHelpMessage(sender);
             return;
@@ -70,7 +71,7 @@ public class MCMetricsCommand extends Command {
 
     private void handlePayment(CommandSender sender, String[] args) {
         if (args.length != 6) {
-            sender.sendMessage(new TextComponent(colorize("&cUsage: /mcmetricsbungee payment <tebex|craftingstore> <player_uuid> <transaction_id> <amount> <currency>")));
+            sender.sendMessage(new TextComponent(colorize("&cUsage: /mcmetricsbungee payment <platform> <player_uuid> <transaction_id> <amount> <currency>")));
             return;
         }
 
@@ -130,34 +131,20 @@ public class MCMetricsCommand extends Command {
     }
 
     private void handleReload(CommandSender sender) {
-        if (!sender.hasPermission("mcmetrics.admin")) {
-            sender.sendMessage(new TextComponent(colorize("&cYou don't have permission to use this command.")));
-            return;
-        }
-
         plugin.reloadPlugin();
         sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "MCMetrics configuration reloaded.")));
     }
 
     private void handleSetup(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("mcmetrics.admin")) {
-            sender.sendMessage(new TextComponent(colorize("&cYou don't have permission to use this command.")));
-            return;
-        }
-
         if (args.length != 3) {
             sender.sendMessage(new TextComponent(colorize("&cUsage: /mcmetricsbungee setup <server_id> <server_key>")));
             return;
         }
 
-        String serverId = args[1];
-        String serverKey = args[2];
-
         try {
-            Configuration config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(new File(plugin.getDataFolder(), "config.yml"));
-            config.set("server.id", serverId);
-            config.set("server.key", serverKey);
-            ConfigurationProvider.getProvider(YamlConfiguration.class).save(config, new File(plugin.getDataFolder(), "config.yml"));
+            plugin.getConfigManager().set("main", "server.id", args[1]);
+            plugin.getConfigManager().set("main", "server.key", args[2]);
+            plugin.getConfigManager().saveConfig("main");
             plugin.reloadPlugin();
             sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "MCMetrics configuration updated and reloaded.")));
         } catch (IOException e) {
@@ -167,11 +154,6 @@ public class MCMetricsCommand extends Command {
     }
 
     private void handleStatus(CommandSender sender) {
-        if (!sender.hasPermission("mcmetrics.admin")) {
-            sender.sendMessage(new TextComponent(colorize("&cYou don't have permission to use this command.")));
-            return;
-        }
-
         MCMetricsAPI api = plugin.getApi();
         if (api == null) {
             sender.sendMessage(new TextComponent(colorize("&cMCMetrics is not properly configured. Please use '/mcmetricsbungee setup' to configure the plugin.")));
@@ -186,11 +168,6 @@ public class MCMetricsCommand extends Command {
     }
 
     private void handleInfo(CommandSender sender, String[] args) {
-        if (!sender.hasPermission("mcmetrics.admin")) {
-            sender.sendMessage(new TextComponent(colorize("&cYou don't have permission to use this command.")));
-            return;
-        }
-
         if (args.length != 2) {
             sender.sendMessage(new TextComponent(colorize("&cUsage: /mcmetricsbungee info <player name or uuid>")));
             return;
@@ -256,6 +233,6 @@ public class MCMetricsCommand extends Command {
     }
 
     private String colorize(String message) {
-        return ChatColor.translateAlternateColorCodes('&', message.replace(PRIMARY_COLOR, net.md_5.bungee.api.ChatColor.of(PRIMARY_COLOR).toString()));
+        return ChatColor.translateAlternateColorCodes('&', message.replace(PRIMARY_COLOR, ChatColor.of(PRIMARY_COLOR).toString()));
     }
 }

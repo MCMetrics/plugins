@@ -53,7 +53,6 @@ public class PlayerSessionListener {
             return;
         }
 
-        // You might want to add more data to the session here if needed
     }
 
     @Subscribe

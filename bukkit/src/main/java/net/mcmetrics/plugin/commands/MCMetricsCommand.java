@@ -31,7 +31,7 @@ public class MCMetricsCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission(plugin.getConfigManager().getString("main", "mcmetrics.admin"))) {
+        if (!sender.hasPermission("mcmetrics.admin")) {
             sender.sendMessage(colorize("&cYou don't have permission to use this command."));
             return true;
         }

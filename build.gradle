@@ -44,6 +44,10 @@ subprojects {
             name = "velocity-repo"
             url = "https://nexus.velocitypowered.com/repository/maven-public/"
         }
+        maven {
+            name = "placeholderapi"
+            url = "https://repo.extendedclip.com/content/repositories/placeholderapi/"
+        }
     }
 
     processResources {

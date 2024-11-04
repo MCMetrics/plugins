@@ -83,12 +83,6 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
                     .filter(uuid -> uuid.startsWith("00000000-0000-0000"))
                     .count();
                 ping.java_player_count = ping.player_count - ping.bedrock_player_count;
-                ping.tps = 20.0; //TODO: Implement actual TPS calculation
-                ping.mspt = 0.0; //TODO: Implement actual MSPT calculation
-                ping.cpu_percent = 0.0; //TODO: Implement CPU usage calculation
-                ping.ram_percent = 0.0; //TODO: Implement RAM usage calculation
-                ping.entities_loaded = 0;
-                ping.chunks_loaded = 0;
 
                 api.insertServerPing(ping).thenRun(() -> 
                     getLogger().info("Server ping recorded successfully."));

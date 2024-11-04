@@ -6,6 +6,7 @@ import net.md_5.bungee.api.plugin.Plugin;
 import net.mcmetrics.shared.MCMetricsAPI;
 import net.mcmetrics.shared.config.ConfigManager;
 import net.mcmetrics.shared.models.ServerPing;
+import net.md_5.bungee.api.connection.ProxiedPlayer;
 
 import java.io.IOException;
 import java.util.Date;
@@ -68,14 +69,17 @@ public final class MCMetricsBungeePlugin extends Plugin {
             ServerPing ping = new ServerPing();
             ping.time = new Date();
             ping.player_count = getProxy().getOnlineCount();
-            ping.java_player_count = ping.player_count; // BungeeCord doesn't distinguish between Java and Bedrock players
-            ping.bedrock_player_count = 0;
-            ping.tps = -1.0;
-            ping.mspt = -1.0; // BungeeCord doesn't have MSPT
-            ping.cpu_percent = 0.0; // Implement CPU usage calculation if possible
-            ping.ram_percent = 0.0; // Implement RAM usage calculation if possible
-            ping.entities_loaded = -1; // Not applicable for BungeeCord
-            ping.chunks_loaded = -1; // Not applicable for BungeeCord
+            
+            // Count Bedrock players by UUID format
+            int bedrockCount = 0;
+            for (ProxiedPlayer player : getProxy().getPlayers()) {
+                if (player.getUniqueId().toString().startsWith("00000000-0000-0000")) {
+                    bedrockCount++;
+                }
+            }
+            
+            ping.bedrock_player_count = bedrockCount;
+            ping.java_player_count = ping.player_count - bedrockCount;
 
             api.insertServerPing(ping).thenRun(() -> 
                 getLogger().info("Server ping recorded successfully."));

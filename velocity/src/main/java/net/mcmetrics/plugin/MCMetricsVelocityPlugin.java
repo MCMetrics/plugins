@@ -110,15 +110,14 @@ public class MCMetricsVelocityPlugin {
         ServerPing ping = new ServerPing();
         ping.time = new Date();
         ping.player_count = server.getPlayerCount();
-        ping.java_player_count = ping.player_count; // Velocity doesn't distinguish between Java and Bedrock players
-        ping.bedrock_player_count = 0;
-        ping.tps = 20.0; // Velocity doesn't have TPS
-        ping.mspt = 0.0; // Velocity doesn't have MSPT
-        ping.cpu_percent = 0.0; // Implement CPU usage calculation if possible
-        ping.ram_percent = 0.0; // Implement RAM usage calculation if possible
-        ping.entities_loaded = 0; // Not applicable for Velocity
-        ping.chunks_loaded = 0; // Not applicable for Velocity
-
+        
+        // Count Bedrock players by UUID format
+        int bedrockCount = (int) server.getAllPlayers().stream()
+            .filter(player -> player.getUniqueId().toString().startsWith("00000000-0000-0000"))
+            .count();
+            
+        ping.bedrock_player_count = bedrockCount;
+        ping.java_player_count = ping.player_count - bedrockCount;
         api.insertServerPing(ping).thenRun(() -> logger.info("Server ping recorded successfully."));
     }
 

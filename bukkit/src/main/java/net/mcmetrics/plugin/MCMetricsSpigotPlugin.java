@@ -93,7 +93,7 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
                 api.insertServerPing(ping).thenRun(() -> 
                     getLogger().info("Server ping recorded successfully."));
             }
-        }.runTaskTimerAsynchronously(this, 0L, 20L * 10); // Run every 10 seconds
+        }.runTaskTimerAsynchronously(this, 0L, 60L * 10); // Run every 60 seconds
     }
 
     public MCMetricsAPI getApi() {

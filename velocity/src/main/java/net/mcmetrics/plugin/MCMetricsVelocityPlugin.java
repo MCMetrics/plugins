@@ -97,7 +97,7 @@ public class MCMetricsVelocityPlugin {
     private void startServerPingTask() {
         server.getScheduler()
                 .buildTask(this, this::recordServerPing)
-                .repeat(10L, TimeUnit.SECONDS)
+                .repeat(60L, TimeUnit.SECONDS)
                 .schedule();
     }
 

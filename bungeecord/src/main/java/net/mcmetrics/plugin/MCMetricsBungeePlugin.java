@@ -79,7 +79,7 @@ public final class MCMetricsBungeePlugin extends Plugin {
 
             api.insertServerPing(ping).thenRun(() -> 
                 getLogger().info("Server ping recorded successfully."));
-        }, 0, 10, TimeUnit.SECONDS);
+        }, 0, 60, TimeUnit.SECONDS);
     }
 
     public MCMetricsAPI getApi() {

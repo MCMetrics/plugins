@@ -65,7 +65,7 @@ public class MCMetricsVelocityPlugin {
             server.getCommandManager().register(meta, (SimpleCommand) mcMetricsCommand::execute);
 
             startServerPingTask();
-            logger.info("MCMetrics plugin enabled successfully!");
+            logger.info("MCMetrics plugin has been enabled. Thank you for using MCMetrics!");
         } catch (IOException e) {
             logger.severe("Failed to load configuration: " + e.getMessage());
         }

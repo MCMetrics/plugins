@@ -11,7 +11,6 @@ public class Session {
     public Date session_start;
     public Date session_end;
     public String domain;
-    //TODO: make this work
     public Long afk_time_ms; @Nullable // null for bungee/velocity implementations
     public String ip_address;
     public List<ABTestExposure> ab_test_exposure; //@Nullable // null for bungee/velocity implementations

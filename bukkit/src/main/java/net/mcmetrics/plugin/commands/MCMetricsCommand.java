@@ -190,9 +190,9 @@ public class MCMetricsCommand implements CommandExecutor {
             return true;
         }
 
-        UUID playerId = target.getUniqueId();
+        UUID playerUUID = target.getUniqueId();
         SessionManager sessionManager = plugin.getSessionManager();
-        Session session = sessionManager.getSession(playerId);
+        Session session = sessionManager.getSession(playerUUID);
 
         if (session == null) {
             sender.sendMessage(colorize("&cNo active session found for this player."));
@@ -201,21 +201,21 @@ public class MCMetricsCommand implements CommandExecutor {
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         sender.sendMessage(colorize(PRIMARY_COLOR + "&lPlayer Info: &f" + target.getName()));
-        sender.sendMessage(colorize("&7UUID: &f" + playerId));
+        sender.sendMessage(colorize("&7UUID: &f" + playerUUID));
         sender.sendMessage(colorize("&7Session start: &f" + sdf.format(session.session_start)));
         sender.sendMessage(colorize("&7Domain: &f" + session.domain));
         sender.sendMessage(colorize("&7Player type: &f" + (plugin.isBedrockPlayer(target) ? "Bedrock" : "Java")));
-        sender.sendMessage(colorize("&7AFK time: &f" + plugin.getAFKTime(playerId) + " seconds"));
+        sender.sendMessage(colorize("&7AFK time: &f" + plugin.getAFKTime(playerUUID) + " seconds"));
         sender.sendMessage(colorize("&7IP Address: &f" + session.ip_address));
 
-        Map<String, Integer> groupedEvents = sessionManager.getGroupedCustomEvents(playerId);
+        Map<String, Integer> groupedEvents = sessionManager.getGroupedCustomEvents(playerUUID);
         sender.sendMessage(colorize("&7Custom events this session:"));
         for (Map.Entry<String, Integer> entry : groupedEvents.entrySet()) {
             sender.sendMessage(colorize("  &f" + entry.getKey() + ": &7" + entry.getValue() + " times"));
         }
 
         sender.sendMessage(colorize("&7Payments this session:"));
-        for (Payment payment : sessionManager.getSessionPayments(playerId)) {
+        for (Payment payment : sessionManager.getSessionPayments(playerUUID)) {
             sender.sendMessage(colorize("  &f" + payment.amount + " " + payment.currency + " &7(" + payment.platform + ")"));
         }
 

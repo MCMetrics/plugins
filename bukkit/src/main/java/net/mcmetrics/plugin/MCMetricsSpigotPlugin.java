@@ -38,7 +38,7 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerSessionListener(this, sessionManager), this);
         getCommand("mcmetrics").setExecutor(new MCMetricsCommand(this));
         startServerPingTask();
-        getLogger().info("MCMetrics plugin enabled successfully!");
+        getLogger().info("MCMetrics plugin has been enabled. Thank you for using MCMetrics!");
     }
 
     public void initializeAPI() {

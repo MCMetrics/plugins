@@ -33,7 +33,7 @@ public final class MCMetricsBungeePlugin extends Plugin {
         getProxy().getPluginManager().registerListener(this, new PlayerSessionListener(this, sessionManager));
         getProxy().getPluginManager().registerCommand(this, new MCMetricsCommand(this));
         startServerPingTask();
-        getLogger().info("MCMetrics plugin enabled successfully!");
+        getLogger().info("MCMetrics plugin has been enabled. Thank you for using MCMetrics!");
     }
 
     public void initializeAPI() {

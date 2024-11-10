@@ -19,6 +19,7 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
     private MCMetricsAPI api;
     private SessionManager sessionManager;
     private ConfigManager configManager;
+    private LegacyPlayerManager legacyPlayerManager;
 
     @Override
     public void onEnable() {
@@ -32,6 +33,9 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
+
+        // Initialize legacy player manager
+        legacyPlayerManager = new LegacyPlayerManager(getDataFolder(), getLogger());
 
         initializeAPI();
         sessionManager = new SessionManager(api);
@@ -100,6 +104,10 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
 
     public ConfigManager getConfigManager() {
         return configManager;
+    }
+
+    public LegacyPlayerManager getLegacyPlayerManager() {
+        return legacyPlayerManager;
     }
 
     public void reloadPlugin() {

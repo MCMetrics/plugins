@@ -5,6 +5,7 @@ import net.mcmetrics.plugin.SessionManager;
 import net.mcmetrics.shared.models.Session;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
@@ -24,8 +25,12 @@ public class PlayerSessionListener implements Listener {
         this.sessionManager = sessionManager;
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerLogin(PlayerLoginEvent event) {
+        if (event.getResult() != PlayerLoginEvent.Result.ALLOWED) {
+            return;
+        }
+
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
@@ -41,7 +46,7 @@ public class PlayerSessionListener implements Listener {
         sessionManager.startSession(playerId, session);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
@@ -53,9 +58,15 @@ public class PlayerSessionListener implements Listener {
             plugin.getLogger().warning("Player joined, but could not find session: " + playerId);
             return;
         }
+
+        // Check for potential legacy players during join event when hasPlayedBefore() is reliable
+        if (player.hasPlayedBefore() && !plugin.getLegacyPlayerManager().isKnownPlayer(playerId)) {
+            session.potential_legacy = true;
+            // plugin.getLogger().info("Marked player " + player.getName() + " as potential legacy player");
+        }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
@@ -71,7 +82,14 @@ public class PlayerSessionListener implements Listener {
         session.session_end = new Date();
 
         plugin.getApi().insertSession(session)
-            .thenRun(() -> plugin.getLogger().info("Session uploaded for player: " + playerId))
+            .thenAccept(v -> {
+                plugin.getLogger().info("Session uploaded for player: " + playerId);
+                // Only add to known players if this was a potential legacy player and upload succeeded
+                if (session.potential_legacy) {
+                    plugin.getLegacyPlayerManager().addKnownPlayer(playerId);
+                    // plugin.getLogger().info("Added " + player.getName() + " to known players list after successful session upload");
+                }
+            })
             .exceptionally(e -> {
                 plugin.getLogger().severe("Failed to upload session for player " + playerId + ": " + e.getMessage());
                 return null;

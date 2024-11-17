@@ -63,6 +63,10 @@ public class MCMetricsAPI {
         return makeRequest("POST", "/insert/custom_event", customEvent, EmptyResponse.class).thenApply(v -> null);
     }
 
+    public CompletableFuture<Void> insertChatMessage(ChatMessage chatMessage) {
+        return makeRequest("POST", "/insert/chat_message", chatMessage, EmptyResponse.class).thenApply(v -> null);
+    }
+
     public CompletableFuture<List<ABTest>> getABTests() {
         return makeRequest("GET", "/ab_tests", null, ABTestResponse.class)
                 .thenApply(response -> ((ABTestResponse) response).data.ab_tests);

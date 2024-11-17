@@ -9,6 +9,7 @@ import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import net.mcmetrics.plugin.commands.MCMetricsCommand;
 import net.mcmetrics.plugin.listeners.PlayerSessionListener;
+import net.mcmetrics.plugin.listeners.ChatMessageListener;
 import net.mcmetrics.shared.MCMetricsAPI;
 import net.mcmetrics.shared.config.ConfigManager;
 import net.mcmetrics.shared.models.ServerPing;
@@ -55,6 +56,7 @@ public class MCMetricsVelocityPlugin {
             sessionManager = new SessionManager(api);
 
             server.getEventManager().register(this, new PlayerSessionListener(this, sessionManager));
+            server.getEventManager().register(this, new ChatMessageListener(this));
 
             // Register the command
             MCMetricsCommand mcMetricsCommand = new MCMetricsCommand(this);

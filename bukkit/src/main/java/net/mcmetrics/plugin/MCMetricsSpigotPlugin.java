@@ -1,9 +1,7 @@
 package net.mcmetrics.plugin;
 
 import net.mcmetrics.plugin.commands.MCMetricsCommand;
-import net.mcmetrics.plugin.listeners.PlayerSessionListener;
-import net.mcmetrics.plugin.listeners.ABTestListener;
-import net.mcmetrics.plugin.listeners.ConsoleEventListener;
+import net.mcmetrics.plugin.listeners.*;
 import net.mcmetrics.shared.MCMetricsAPI;
 import net.mcmetrics.shared.config.ConfigManager;
 import net.mcmetrics.shared.models.ServerPing;
@@ -46,9 +44,10 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         // event listeners
         getServer().getPluginManager().registerEvents(new PlayerSessionListener(this, sessionManager), this);
         getServer().getPluginManager().registerEvents(new ABTestListener(this), this);
+        getServer().getPluginManager().registerEvents(new ChatMessageListener(this), this);
 
         consoleEventListener = new ConsoleEventListener(this);
-    getServer().getPluginManager().registerEvents(consoleEventListener, this);
+        getServer().getPluginManager().registerEvents(consoleEventListener, this);
         
         // commands
         getCommand("mcmetrics").setExecutor(new MCMetricsCommand(this));

@@ -2,6 +2,7 @@ package net.mcmetrics.plugin.commands;
 
 import net.mcmetrics.plugin.MCMetricsSpigotPlugin;
 import net.mcmetrics.plugin.SessionManager;
+import net.mcmetrics.plugin.listeners.ConsoleEventListener;
 import net.mcmetrics.shared.MCMetricsAPI;
 import net.mcmetrics.shared.models.ABTest;
 import net.mcmetrics.shared.models.CustomEvent;
@@ -20,6 +21,8 @@ import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 import java.util.HashMap;
+
+import net.mcmetrics.plugin.listeners.ConsoleEventListener.EventPatternInfo;
 
 public class MCMetricsCommand implements CommandExecutor {
 
@@ -47,6 +50,8 @@ public class MCMetricsCommand implements CommandExecutor {
                 return handlePayment(sender, args);
             case "customevent":
                 return handleCustomEvent(sender, args);
+            case "customevents":
+                return handleCustomEvents(sender);                
             case "reload":
                 return handleReload(sender);
             case "setup":
@@ -135,35 +140,74 @@ public class MCMetricsCommand implements CommandExecutor {
 
     private boolean handleCustomEvent(CommandSender sender, String[] args) {
         if (args.length < 3) {
-            sender.sendMessage(colorize("&cUsage: /mcmetrics customevent <player_uuid> <event_type> [key1=value1 key2=value2 ...]"));
+            sender.sendMessage(colorize("&cUsage: /mcmetrics customevent <player_uuid/name> <event_type> [key1=value1 key2=value2 ...]"));
             return true;
         }
-
+    
         MCMetricsAPI api = plugin.getApi();
         if (api == null) {
             sender.sendMessage(colorize("&cMCMetrics is not properly configured. Please use '/mcmetrics setup' to configure the plugin."));
             return true;
         }
-
+    
+        // Resolve player UUID
+        UUID playerUuid;
+        try {
+            playerUuid = UUID.fromString(args[1]);
+        } catch (IllegalArgumentException e) {
+            Player player = Bukkit.getPlayer(args[1]);
+            if (player == null) {
+                sender.sendMessage(colorize("&cPlayer not found. Note that for offline players, you must use their UUID."));
+                return true;
+            }
+            playerUuid = player.getUniqueId();
+        }
+    
         CustomEvent event = new CustomEvent();
-        event.player_uuid = UUID.fromString(args[1]);
+        event.player_uuid = playerUuid;
         event.event_type = args[2];
         event.timestamp = new Date();
         event.metadata = new HashMap<>();
-
+    
         for (int i = 3; i < args.length; i++) {
             String[] keyValue = args[i].split("=");
             if (keyValue.length == 2) {
                 event.metadata.put(keyValue[0], keyValue[1]);
             }
         }
-
+    
         api.insertCustomEvent(event)
             .thenRun(() -> sender.sendMessage(colorize(PRIMARY_COLOR + "Custom event recorded successfully.")))
             .exceptionally(e -> {
                 sender.sendMessage(colorize("&cFailed to record custom event. Check console for details."));
                 return null;
             });
+    
+        return true;
+    }
+
+    private boolean handleCustomEvents(CommandSender sender) {
+        MCMetricsAPI api = plugin.getApi();
+        if (api == null) {
+            sender.sendMessage(colorize("&cMCMetrics is not properly configured. Please use '/mcmetrics setup' to configure the plugin."));
+            return true;
+        }
+
+        sender.sendMessage(colorize(PRIMARY_COLOR + "&l📊 Active Custom Event Listeners"));
+
+        ConsoleEventListener consoleEventListener = plugin.getConsoleEventListener();
+        if (consoleEventListener == null || consoleEventListener.getEventPatternsInfo().isEmpty()) {
+            sender.sendMessage(colorize("&7No custom event listeners configured."));
+            return true;
+        }
+
+        sender.sendMessage(colorize("&7Console message patterns:"));
+        for (EventPatternInfo pattern : consoleEventListener.getEventPatternsInfo()) {
+            sender.sendMessage(colorize("&8&m                                                "));
+            sender.sendMessage(colorize(PRIMARY_COLOR + "Name: &f" + pattern.getName()));
+            sender.sendMessage(colorize(PRIMARY_COLOR + "Pattern: &7" + pattern.getPattern()));
+            sender.sendMessage(colorize(PRIMARY_COLOR + "Player field: &7" + pattern.getPlayerField()));
+        }
 
         return true;
     }
@@ -363,6 +407,7 @@ public class MCMetricsCommand implements CommandExecutor {
         sender.sendMessage(colorize("  &7- Record a payment"));
         sender.sendMessage(colorize(PRIMARY_COLOR + "/mcmetrics customevent &f<player_uuid>"));
         sender.sendMessage(colorize("  &f<event_type> [key1=value1 key2=value2 ...]"));
+        sender.sendMessage(colorize(PRIMARY_COLOR + "/mcmetrics customevents &7- List active custom event listeners"));
         sender.sendMessage(colorize("  &7- Record a custom event"));
     }
 

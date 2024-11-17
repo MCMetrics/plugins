@@ -3,6 +3,7 @@ package net.mcmetrics.plugin;
 import net.mcmetrics.plugin.commands.MCMetricsCommand;
 import net.mcmetrics.plugin.listeners.PlayerSessionListener;
 import net.mcmetrics.plugin.listeners.ABTestListener;
+import net.mcmetrics.plugin.listeners.ConsoleEventListener;
 import net.mcmetrics.shared.MCMetricsAPI;
 import net.mcmetrics.shared.config.ConfigManager;
 import net.mcmetrics.shared.models.ServerPing;
@@ -22,6 +23,7 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
     private ConfigManager configManager;
     private LegacyPlayerManager legacyPlayerManager;
     private ABTestManager abTestManager;
+    private ConsoleEventListener consoleEventListener;
 
     @Override
     public void onEnable() {
@@ -44,6 +46,9 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         // event listeners
         getServer().getPluginManager().registerEvents(new PlayerSessionListener(this, sessionManager), this);
         getServer().getPluginManager().registerEvents(new ABTestListener(this), this);
+
+        consoleEventListener = new ConsoleEventListener(this);
+    getServer().getPluginManager().registerEvents(consoleEventListener, this);
         
         // commands
         getCommand("mcmetrics").setExecutor(new MCMetricsCommand(this));
@@ -84,6 +89,10 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
                 session.session_end = new Date();
                 api.insertSession(session).join(); // Wait for each session to be inserted
             }
+        }
+
+        if (consoleEventListener != null) {
+            consoleEventListener.shutdown();
         }
         getLogger().info("MCMetrics plugin disabled.");
     }
@@ -132,11 +141,18 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         return abTestManager;
     }
 
+    public ConsoleEventListener getConsoleEventListener() {
+        return consoleEventListener;
+    }
+
     public void reloadPlugin() {
         try {
             configManager.reloadConfig("main");
             initializeAPI();
             fetchABTests();
+            if (consoleEventListener != null) {
+                consoleEventListener.loadEventPatterns();
+            }
             getLogger().info("MCMetrics configuration reloaded.");
         } catch (IOException e) {
             getLogger().severe("Failed to reload configuration: " + e.getMessage());

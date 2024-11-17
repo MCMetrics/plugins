@@ -71,7 +71,7 @@ public class MCMetricsCommand extends Command {
 
     private void handlePayment(CommandSender sender, String[] args) {
         if (args.length != 6) {
-            sender.sendMessage(new TextComponent(colorize("&cUsage: /mcmetricsbungee payment <platform> <player_uuid> <transaction_id> <amount> <currency>")));
+            sender.sendMessage(new TextComponent(colorize("&cUsage: /mcmetricsbungee payment <platform> <player uuid/username> <transaction_id> <amount> <currency>")));
             return;
         }
 
@@ -81,16 +81,46 @@ public class MCMetricsCommand extends Command {
             return;
         }
 
+        UUID playerUuid;
+        String playerName;
+
+        try {
+            playerUuid = UUID.fromString(args[2]);
+            ProxiedPlayer player = plugin.getProxy().getPlayer(playerUuid);
+            if (player != null) {
+                playerName = player.getName();
+            } else {
+                playerName = args[2];
+            }
+        } catch (IllegalArgumentException e) {
+            ProxiedPlayer player = plugin.getProxy().getPlayer(args[2]);
+            if (player == null) {
+                sender.sendMessage(new TextComponent(colorize("&cPlayer not found. Note that for offline players, you must use their UUID.")));
+                return;
+            }
+            playerUuid = player.getUniqueId();
+            playerName = player.getName();
+        }
+
+        double amount;
+        try {
+            amount = Double.parseDouble(args[4]);
+        } catch (NumberFormatException e) {
+            sender.sendMessage(new TextComponent(colorize("&cInvalid amount. Please enter a valid number.")));
+            return;
+        }
+
+        final String finalPlayerName = playerName;
         Payment payment = new Payment();
         payment.platform = args[1];
-        payment.player_uuid = UUID.fromString(args[2]);
+        payment.player_uuid = playerUuid;
         payment.transaction_id = args[3];
-        payment.amount = Double.parseDouble(args[4]);
+        payment.amount = amount;
         payment.currency = args[5];
         payment.datetime = new Date();
 
         api.insertPayment(payment)
-                .thenRun(() -> sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "Payment recorded successfully."))))
+                .thenRun(() -> sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "Payment recorded successfully for " + finalPlayerName + "."))))
                 .exceptionally(e -> {
                     sender.sendMessage(new TextComponent(colorize("&cFailed to record payment. Check console for details.")));
                     return null;

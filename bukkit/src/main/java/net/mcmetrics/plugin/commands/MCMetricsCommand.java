@@ -3,6 +3,7 @@ package net.mcmetrics.plugin.commands;
 import net.mcmetrics.plugin.MCMetricsSpigotPlugin;
 import net.mcmetrics.plugin.SessionManager;
 import net.mcmetrics.shared.MCMetricsAPI;
+import net.mcmetrics.shared.models.ABTest;
 import net.mcmetrics.shared.models.CustomEvent;
 import net.mcmetrics.shared.models.Payment;
 import net.mcmetrics.shared.models.Session;
@@ -54,6 +55,10 @@ public class MCMetricsCommand implements CommandExecutor {
                 return handleStatus(sender);
             case "info":
                 return handleInfo(sender, args);
+            case "abtests":
+                return handleABTests(sender);
+            case "abtest":
+                return handleABTest(sender, args);
             case "help":
                 sendHelpMessage(sender);
                 return true;
@@ -65,7 +70,7 @@ public class MCMetricsCommand implements CommandExecutor {
 
     private boolean handlePayment(CommandSender sender, String[] args) {
         if (args.length != 6) {
-            sender.sendMessage(colorize("&cUsage: /mcmetrics payment <platform> <player_uuid> <transaction_id> <amount> <currency>"));
+            sender.sendMessage(colorize("&cUsage: /mcmetrics payment <platform> <player username/uuid> <transaction_id> <amount> <currency>"));
             return true;
         }
 
@@ -75,20 +80,55 @@ public class MCMetricsCommand implements CommandExecutor {
             return true;
         }
 
+        UUID playerUuid;
+        String playerName;
+        
+        // Parse player argument
+        try {
+            playerUuid = UUID.fromString(args[2]);
+            Player player = Bukkit.getPlayer(playerUuid);
+            playerName = player != null ? player.getName() : args[2];
+        } catch (IllegalArgumentException e) {
+            Player player = Bukkit.getPlayer(args[2]);
+            if (player == null) {
+                sender.sendMessage(colorize("&cPlayer not found. Note that for offline players, you must use their UUID."));
+                return true;
+            }
+            playerUuid = player.getUniqueId();
+            playerName = player.getName();
+        }
+
+        double amount;
+        try {
+            amount = Double.parseDouble(args[4]);
+        } catch (NumberFormatException e) {
+            sender.sendMessage(colorize("&cInvalid amount. Please enter a valid number."));
+            return true;
+        }
+
+        final String finalPlayerName = playerName;
+        final UUID finalPlayerId = playerUuid;
+        
         Payment payment = new Payment();
         payment.platform = args[1];
-        payment.player_uuid = UUID.fromString(args[2]);
+        payment.player_uuid = playerUuid;
         payment.transaction_id = args[3];
-        payment.amount = Double.parseDouble(args[4]);
+        payment.amount = amount;
         payment.currency = args[5];
         payment.datetime = new Date();
 
         api.insertPayment(payment)
-                .thenRun(() -> sender.sendMessage(colorize(PRIMARY_COLOR + "Payment recorded successfully.")))
-                .exceptionally(e -> {
-                    sender.sendMessage(colorize("&cFailed to record payment. Check console for details."));
-                    return null;
-                });
+            .thenRun(() -> {
+                sender.sendMessage(colorize(PRIMARY_COLOR + "Payment recorded successfully for " + finalPlayerName + "."));
+                Player player = Bukkit.getPlayer(finalPlayerId);
+                if (player != null && player.isOnline()) {
+                    plugin.getABTestManager().handlePurchaseTrigger(player);
+                }
+            })
+            .exceptionally(e -> {
+                sender.sendMessage(colorize("&cFailed to record payment. Check console for details."));
+                return null;
+            });
 
         return true;
     }
@@ -119,11 +159,11 @@ public class MCMetricsCommand implements CommandExecutor {
         }
 
         api.insertCustomEvent(event)
-                .thenRun(() -> sender.sendMessage(colorize(PRIMARY_COLOR + "Custom event recorded successfully.")))
-                .exceptionally(e -> {
-                    sender.sendMessage(colorize("&cFailed to record custom event. Check console for details."));
-                    return null;
-                });
+            .thenRun(() -> sender.sendMessage(colorize(PRIMARY_COLOR + "Custom event recorded successfully.")))
+            .exceptionally(e -> {
+                sender.sendMessage(colorize("&cFailed to record custom event. Check console for details."));
+                return null;
+            });
 
         return true;
     }
@@ -169,6 +209,90 @@ public class MCMetricsCommand implements CommandExecutor {
 
         return true;
     }
+
+    private boolean handleABTests(CommandSender sender) {
+        MCMetricsAPI api = plugin.getApi();
+        if (api == null) {
+            sender.sendMessage(colorize("&cMCMetrics is not properly configured. Please use '/mcmetrics setup' to configure the plugin."));
+            return true;
+        }
+
+        sender.sendMessage(colorize(PRIMARY_COLOR + "&l⚡ Active A/B Tests"));
+
+        if (plugin.getABTestManager().getActiveTests().isEmpty()) {
+            sender.sendMessage(colorize("&7No active A/B tests found."));
+            return true;
+        }
+
+        for (ABTest test : plugin.getABTestManager().getActiveTests()) {
+            sender.sendMessage(colorize("&8&m                                                "));
+            sender.sendMessage(colorize(PRIMARY_COLOR + "Name: &f" + test.name));
+            sender.sendMessage(colorize(PRIMARY_COLOR + "ID: &7" + test.id));
+            sender.sendMessage(colorize(PRIMARY_COLOR + "Trigger: &f" + test.trigger));
+            sender.sendMessage(colorize(PRIMARY_COLOR + "Variants:"));
+            
+            for (ABTest.ABTestVariant variant : test.variants) {
+                String variantInfo = String.format("&8- &f%s &7(%d%%)", variant.name, variant.weight);
+                if (variant.action != ABTest.ABTestVariant.ActionType.Control) {
+                    variantInfo += colorize(" &8| &7" + variant.action);
+                    if (!variant.payload.isEmpty()) {
+                        variantInfo += ": &f" + variant.payload;
+                    }
+                }
+                sender.sendMessage(colorize(variantInfo));
+            }
+        }
+
+        return true;
+    }
+
+    private boolean handleABTest(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage(colorize("&cUsage: /mcmetrics abtest <test name> <player>"));
+            return true;
+        }
+
+        String testName = args[1];
+        String playerName = args[2];
+
+        // Find the test
+        ABTest test = plugin.getABTestManager().getActiveTests().stream()
+            .filter(t -> t.name.equalsIgnoreCase(testName))
+            .findFirst()
+            .orElse(null);
+
+        if (test == null) {
+            sender.sendMessage(colorize("&cA/B test '" + testName + "' not found. Use /mcmetrics abtests to see available tests."));
+            return true;
+        }
+
+        if (test.trigger != ABTest.TriggerType.Command) {
+            sender.sendMessage(colorize("&cA/B test '" + testName + "' is not a command-triggered test."));
+            return true;
+        }
+
+        // Find the player
+        Player player = Bukkit.getPlayer(playerName);
+        if (player == null) {
+            try {
+                UUID uuid = UUID.fromString(playerName);
+                player = Bukkit.getPlayer(uuid);
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        if (player == null) {
+            sender.sendMessage(colorize("&cPlayer '" + playerName + "' not found or not online."));
+            return true;
+        }
+
+        ABTest.ABTestVariant variant = plugin.getABTestManager().triggerCommandTest(test, player);
+        if (variant != null) {
+            sender.sendMessage(colorize(PRIMARY_COLOR + "Successfully triggered A/B test '" + testName + "' on " + player.getName() + 
+                " (variant: " + variant.name + ")"));
+        }
+
+        return true;
+    }    
 
     private boolean handleInfo(CommandSender sender, String[] args) {
         if (args.length != 2) {
@@ -229,6 +353,9 @@ public class MCMetricsCommand implements CommandExecutor {
         sender.sendMessage(colorize("  &7- Configure the plugin"));
         sender.sendMessage(colorize(PRIMARY_COLOR + "/mcmetrics reload &7- Reload the configuration"));
         sender.sendMessage(colorize(PRIMARY_COLOR + "/mcmetrics status &7- Show plugin status"));
+        sender.sendMessage(colorize(PRIMARY_COLOR + "/mcmetrics abtests &7- List active A/B tests"));
+        sender.sendMessage(colorize(PRIMARY_COLOR + "/mcmetrics abtest &f<test name>"));
+        sender.sendMessage(colorize("  &7- Trigger a command-based A/B test"));
         sender.sendMessage(colorize(PRIMARY_COLOR + "/mcmetrics info &f<player name or uuid>"));
         sender.sendMessage(colorize("  &7- Show player information"));
         sender.sendMessage(colorize(PRIMARY_COLOR + "/mcmetrics payment &f<platform> <player_uuid>"));

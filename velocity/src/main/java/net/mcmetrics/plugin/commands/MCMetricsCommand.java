@@ -84,23 +84,53 @@ public class MCMetricsCommand implements SimpleCommand {
         return invocation.source().hasPermission("mcmetrics.admin");
     }
 
-    private void handlePayment(CommandSource source, String platform, String playerUuid, String transactionId, String amount, String currency) {
+    private void handlePayment(CommandSource source, String platform, String playerArg, String transactionId, String amount, String currency) {
         MCMetricsAPI api = plugin.getApi();
         if (api == null) {
             source.sendMessage(Component.text("MCMetrics is not properly configured. Please use '/mcmetricsvelocity setup' to configure the plugin.").color(NamedTextColor.RED));
             return;
         }
 
+        UUID playerUuid;
+        String playerName;
+
+        try {
+            playerUuid = UUID.fromString(playerArg);
+            Optional<Player> player = plugin.getServer().getPlayer(playerUuid);
+            if (player.isPresent()) {
+                playerName = player.get().getUsername();
+            } else {
+                playerName = playerArg;
+            }
+        } catch (IllegalArgumentException e) {
+            Optional<Player> player = plugin.getServer().getPlayer(playerArg);
+            if (!player.isPresent()) {
+                source.sendMessage(Component.text("Player not found. Note that for offline players, you must use their UUID.").color(NamedTextColor.RED));
+                return;
+            }
+            playerUuid = player.get().getUniqueId();
+            playerName = player.get().getUsername();
+        }
+
+        double parsedAmount;
+        try {
+            parsedAmount = Double.parseDouble(amount);
+        } catch (NumberFormatException e) {
+            source.sendMessage(Component.text("Invalid amount. Please enter a valid number.").color(NamedTextColor.RED));
+            return;
+        }
+
+        final String finalPlayerName = playerName;
         Payment payment = new Payment();
         payment.platform = platform;
-        payment.player_uuid = UUID.fromString(playerUuid);
+        payment.player_uuid = playerUuid;
         payment.transaction_id = transactionId;
-        payment.amount = Double.parseDouble(amount);
+        payment.amount = parsedAmount;
         payment.currency = currency;
         payment.datetime = new Date();
 
         api.insertPayment(payment)
-                .thenRun(() -> source.sendMessage(Component.text("Payment recorded successfully.").color(PRIMARY_COLOR)))
+                .thenRun(() -> source.sendMessage(Component.text("Payment recorded successfully for " + finalPlayerName + ".").color(PRIMARY_COLOR)))
                 .exceptionally(e -> {
                     source.sendMessage(Component.text("Failed to record payment. Check console for details.").color(NamedTextColor.RED));
                     return null;

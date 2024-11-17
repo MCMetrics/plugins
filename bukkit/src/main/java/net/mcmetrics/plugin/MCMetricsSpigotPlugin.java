@@ -2,6 +2,7 @@ package net.mcmetrics.plugin;
 
 import net.mcmetrics.plugin.commands.MCMetricsCommand;
 import net.mcmetrics.plugin.listeners.PlayerSessionListener;
+import net.mcmetrics.plugin.listeners.ABTestListener;
 import net.mcmetrics.shared.MCMetricsAPI;
 import net.mcmetrics.shared.config.ConfigManager;
 import net.mcmetrics.shared.models.ServerPing;
@@ -20,10 +21,10 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
     private SessionManager sessionManager;
     private ConfigManager configManager;
     private LegacyPlayerManager legacyPlayerManager;
+    private ABTestManager abTestManager;
 
     @Override
     public void onEnable() {
-        // Initialize config manager
         configManager = new ConfigManager();
         try {
             configManager.loadConfig("main", getDataFolder(), "config.yml", 
@@ -34,15 +35,32 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
             return;
         }
 
-        // Initialize legacy player manager
         legacyPlayerManager = new LegacyPlayerManager(getDataFolder(), getLogger());
 
         initializeAPI();
         sessionManager = new SessionManager(api);
+        abTestManager = new ABTestManager(this, api, getLogger());
+        
+        // event listeners
         getServer().getPluginManager().registerEvents(new PlayerSessionListener(this, sessionManager), this);
+        getServer().getPluginManager().registerEvents(new ABTestListener(this), this);
+        
+        // commands
         getCommand("mcmetrics").setExecutor(new MCMetricsCommand(this));
+        
+        fetchABTests();
+
         startServerPingTask();
+        
         getLogger().info("MCMetrics plugin has been enabled. Thank you for using MCMetrics!");
+    }
+
+    private void fetchABTests() {
+        if (api == null) {
+            getLogger().warning("Cannot fetch A/B tests: API not initialized");
+            return;
+        }
+        abTestManager.fetchTests();
     }
 
     public void initializeAPI() {
@@ -110,10 +128,15 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         return legacyPlayerManager;
     }
 
+    public ABTestManager getABTestManager() {
+        return abTestManager;
+    }
+
     public void reloadPlugin() {
         try {
             configManager.reloadConfig("main");
             initializeAPI();
+            fetchABTests();
             getLogger().info("MCMetrics configuration reloaded.");
         } catch (IOException e) {
             getLogger().severe("Failed to reload configuration: " + e.getMessage());

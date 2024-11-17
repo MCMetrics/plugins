@@ -8,6 +8,7 @@ import net.mcmetrics.shared.models.*;
 import okhttp3.*;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
@@ -42,53 +43,79 @@ public class MCMetricsAPI {
         this.errorTimes = new ConcurrentLinkedQueue<>();
     }
 
+    private static class EmptyResponse {
+        // Empty response wrapper for void endpoints
+    }
+
     public CompletableFuture<Void> insertServerPing(ServerPing serverPing) {
-        return makeRequest("/insert/server_ping", serverPing);
+        return makeRequest("POST", "/insert/server_ping", serverPing, EmptyResponse.class).thenApply(v -> null);
     }
 
     public CompletableFuture<Void> insertSession(Session session) {
-        return makeRequest("/insert/session", session);
+        return makeRequest("POST", "/insert/session", session, EmptyResponse.class).thenApply(v -> null);
     }
 
     public CompletableFuture<Void> insertPayment(Payment payment) {
-        return makeRequest("/insert/payment", payment);
+        return makeRequest("POST", "/insert/payment", payment, EmptyResponse.class).thenApply(v -> null);
     }
 
     public CompletableFuture<Void> insertCustomEvent(CustomEvent customEvent) {
-        return makeRequest("/insert/custom_event", customEvent);
+        return makeRequest("POST", "/insert/custom_event", customEvent, EmptyResponse.class).thenApply(v -> null);
     }
 
-    private <T> CompletableFuture<Void> makeRequest(String endpoint, T data) {
-        String json = gson.toJson(data);
-        Request request = new Request.Builder()
+    public CompletableFuture<List<ABTest>> getABTests() {
+        return makeRequest("GET", "/ab_tests", null, ABTestResponse.class)
+                .thenApply(response -> ((ABTestResponse) response).data.ab_tests);
+    }
+
+    private <T, R> CompletableFuture<R> makeRequest(String method, String endpoint, T data, Class<R> responseClass) {
+        Request.Builder requestBuilder = new Request.Builder()
                 .url(API_BASE_URL + endpoint)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("X-Server-ID", serverId)
-                .addHeader("X-Server-Key", serverKey)
-                .post(RequestBody.create(json, MediaType.parse("application/json")))
-                .build();
+                .addHeader("X-Server-Key", serverKey);
 
-        CompletableFuture<Void> future = new CompletableFuture<>();
+        if (method.equals("POST") && data != null) {
+            String json = gson.toJson(data);
+            requestBuilder.post(RequestBody.create(json, MediaType.parse("application/json")));
+        } else if (method.equals("GET")) {
+            requestBuilder.get();
+        }
+
+        Request request = requestBuilder.build();
+        CompletableFuture<R> future = new CompletableFuture<>();
 
         incrementRequestCount();
 
         httpClient.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
+                logger.severe("[MCMetrics Debug] Network failure: " + e.getMessage());
                 incrementErrorCount();
                 future.completeExceptionally(new MCMetricsException("NETWORK_ERROR", "Network error: " + e.getMessage(), logger));
-            }
+            }            
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 try (ResponseBody responseBody = response.body()) {
+                    String responseStr = responseBody != null ? responseBody.string() : "No response body";
+
                     if (!response.isSuccessful()) {
                         incrementErrorCount();
-                        String errorBody = responseBody != null ? responseBody.string() : "No error body";
-                        MCMetricsException exception = parseErrorResponse(errorBody);
+                        MCMetricsException exception = parseErrorResponse(responseStr);
                         future.completeExceptionally(exception);
                     } else {
-                        future.complete(null);
+                        if (responseClass == Void.class) {
+                            future.complete(null);
+                        } else {
+                            try {
+                                R result = gson.fromJson(responseStr, responseClass);
+                                future.complete(result);
+                            } catch (Exception e) {
+                                logger.severe("[MCMetrics Debug] Failed to parse response: " + e.getMessage());
+                                future.completeExceptionally(new MCMetricsException("PARSE_ERROR", "Failed to parse response: " + e.getMessage(), logger));
+                            }
+                        }
                     }
                 }
             }
@@ -149,7 +176,6 @@ public class MCMetricsAPI {
         public MCMetricsException(String errorType, String message, Logger logger) {
             super(message);
 
-            // use the logger to log the error message, based on the error type
             switch (errorType) {
                 case "NETWORK_ERROR":
                     logger.severe("A network error occurred while making a request to the MCMetrics API. Network error: " + message);

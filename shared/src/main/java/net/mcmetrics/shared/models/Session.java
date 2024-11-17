@@ -13,7 +13,7 @@ public class Session {
     public String domain;
     public Long afk_time_ms; @Nullable // null for bungee/velocity implementations
     public String ip_address;
-    public List<ABTestExposure> ab_test_exposure; @Nullable // null for bungee/velocity implementations
+    public List<ABTestExposure> ab_test_exposures; @Nullable // null for bungee/velocity implementations
 
     /*
     when a new customer installs mcmetrics, it is likely that the plugin is being installed

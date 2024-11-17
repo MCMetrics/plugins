@@ -1,0 +1,14 @@
+group = rootProject.group
+version = rootProject.version
+
+dependencies {
+    implementation project(':shared')
+
+    compileOnly 'net.md-5:bungeecord-api:1.18-R0.1-SNAPSHOT'
+}
+
+shadowJar {
+    configurations = [project.configurations.runtimeClasspath]
+
+    minimize()
+}

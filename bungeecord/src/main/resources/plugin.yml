@@ -1,0 +1,5 @@
+name: MCMetrics
+version: "${version}"
+main: net.mcmetrics.plugin.MCMetricsBungeePlugin
+commands:
+  mcmetricsbungee:

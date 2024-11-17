@@ -1,0 +1,19 @@
+group = rootProject.group
+version = rootProject.version
+
+repositories {
+    maven { url = 'https://repo.extendedclip.com/content/repositories/placeholderapi/' }
+}
+
+dependencies {
+    implementation project(':shared')
+    compileOnly 'org.spigotmc:spigot-api:1.19.4-R0.1-SNAPSHOT'
+    compileOnly 'me.clip:placeholderapi:2.11.6'
+    implementation 'org.apache.logging.log4j:log4j-core:2.17.1'
+    implementation 'org.apache.logging.log4j:log4j-api:2.17.1'
+}
+
+shadowJar {
+    configurations = [project.configurations.runtimeClasspath]
+    minimize()
+}

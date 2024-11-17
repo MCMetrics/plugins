@@ -1,0 +1,6 @@
+rootProject.name = 'mcmetrics'
+
+include 'shared'
+include 'bukkit'
+include 'bungeecord'
+include 'velocity'

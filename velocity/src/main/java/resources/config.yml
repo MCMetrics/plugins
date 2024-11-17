@@ -1,0 +1,25 @@
+# Secret. Keep these values safe.
+server:
+  id: ""
+  key: ""
+
+# Add any custom events detected via console message here.
+# Click "Create Custom Event" in the `Custom Events` section of our dashboard
+# to automatically generate new event configurations.
+custom-events:
+# [EXAMPLE] This will generate an event for the uuid of the player who created an island
+# [EXAMPLE] and the name of the island they created in the metadata
+#  - name: "skyblock_island_created"
+#    type: "console"
+#    console-pattern: ".* created a new island .*"
+#    player-field: 1 # uuid or username in the message
+#    metadata:
+#      - island_name:
+#        key: "island_name"
+#        field: 2
+
+exempt:
+  players: []
+
+# Don't change this value
+config-version: 2

@@ -1,0 +1,24 @@
+# Secret. Keep these values safe.
+server:
+  id: ""
+  key: ""
+
+# Add any custom events detected via console message here.
+# Click "Create Custom Event" in the `Custom Events` section of our dashboard
+# to automatically generate new event configurations.
+custom-events:
+  # [EXAMPLE] This will generate an event when a player issues a command
+  - name: "command_executed"
+    type: "console"
+    console-pattern: ".*]: (.+) issued server command: (.*)"
+    player-field: 1 # username in the message
+    metadata:
+      - command:
+          key: "command"
+          field: 2
+
+exempt:
+  players: []
+
+# Don't change this value
+config-version: 2

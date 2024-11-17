@@ -1,0 +1,17 @@
+.gradle/
+.idea/
+ignore/
+**/build
+**/*.iml
+**/*.jar
+**/*.zip
+.DS_Store
+**/.DS_Store
+
+# for github actions
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+!gradlew
+!gradlew.bat
+
+**/bin/

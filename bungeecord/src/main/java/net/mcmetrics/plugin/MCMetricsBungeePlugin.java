@@ -2,7 +2,6 @@ package net.mcmetrics.plugin;
 
 import net.mcmetrics.plugin.commands.MCMetricsCommand;
 import net.mcmetrics.plugin.listeners.PlayerSessionListener;
-import net.mcmetrics.plugin.listeners.ChatMessageListener;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.mcmetrics.shared.MCMetricsAPI;
 import net.mcmetrics.shared.config.ConfigManager;
@@ -32,7 +31,6 @@ public final class MCMetricsBungeePlugin extends Plugin {
         initializeAPI();
         sessionManager = new SessionManager(api);
         getProxy().getPluginManager().registerListener(this, new PlayerSessionListener(this, sessionManager));
-        getProxy().getPluginManager().registerListener(this, new ChatMessageListener(this));
         getProxy().getPluginManager().registerCommand(this, new MCMetricsCommand(this));
         startServerPingTask();
         getLogger().info("MCMetrics plugin has been enabled. Thank you for using MCMetrics!");

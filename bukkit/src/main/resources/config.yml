@@ -10,7 +10,7 @@ custom-events:
   # [EXAMPLE] This will generate an event when a player issues a command
   - name: "command_executed"
     type: "console"
-    console-pattern: ".*]: (.+) issued server command: (.*)"
+    console-pattern: "(.+) issued server command: (.*)"
     player-field: 1 # username in the message
     metadata:
       - command:

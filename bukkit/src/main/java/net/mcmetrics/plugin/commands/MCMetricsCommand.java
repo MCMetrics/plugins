@@ -13,6 +13,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 
 import java.io.IOException;
@@ -138,53 +139,57 @@ public class MCMetricsCommand implements CommandExecutor {
         return true;
     }
 
-    private boolean handleCustomEvent(CommandSender sender, String[] args) {
-        if (args.length < 3) {
-            sender.sendMessage(colorize("&cUsage: /mcmetrics customevent <player_uuid/name> <event_type> [key1=value1 key2=value2 ...]"));
-            return true;
-        }
-    
-        MCMetricsAPI api = plugin.getApi();
-        if (api == null) {
-            sender.sendMessage(colorize("&cMCMetrics is not properly configured. Please use '/mcmetrics setup' to configure the plugin."));
-            return true;
-        }
-    
-        // Resolve player UUID
-        UUID playerUuid;
-        try {
-            playerUuid = UUID.fromString(args[1]);
-        } catch (IllegalArgumentException e) {
-            Player player = Bukkit.getPlayer(args[1]);
-            if (player == null) {
-                sender.sendMessage(colorize("&cPlayer not found. Note that for offline players, you must use their UUID."));
-                return true;
-            }
-            playerUuid = player.getUniqueId();
-        }
-    
-        CustomEvent event = new CustomEvent();
-        event.player_uuid = playerUuid;
-        event.event_type = args[2];
-        event.timestamp = new Date();
-        event.metadata = new HashMap<>();
-    
-        for (int i = 3; i < args.length; i++) {
-            String[] keyValue = args[i].split("=");
-            if (keyValue.length == 2) {
-                event.metadata.put(keyValue[0], keyValue[1]);
-            }
-        }
-    
-        api.insertCustomEvent(event)
-            .thenRun(() -> sender.sendMessage(colorize(PRIMARY_COLOR + "Custom event recorded successfully.")))
-            .exceptionally(e -> {
-                sender.sendMessage(colorize("&cFailed to record custom event. Check console for details."));
-                return null;
-            });
-    
+private boolean handleCustomEvent(CommandSender sender, String[] args) {
+    if (args.length < 3) {
+        sender.sendMessage(colorize("&cUsage: /mcmetrics customevent <player_uuid/name> <event_type> [key1=value1 key2=value2 ...]"));
         return true;
     }
+
+    MCMetricsAPI api = plugin.getApi();
+    if (api == null) {
+        sender.sendMessage(colorize("&cMCMetrics is not properly configured. Please use '/mcmetrics setup' to configure the plugin."));
+        return true;
+    }
+
+    UUID playerUuid;
+    try {
+        playerUuid = UUID.fromString(args[1]);
+    } catch (IllegalArgumentException e) {
+        Player player = Bukkit.getPlayer(args[1]);
+        if (player == null) {
+            sender.sendMessage(colorize("&cPlayer not found. Note that for offline players, you must use their UUID."));
+            return true;
+        }
+        playerUuid = player.getUniqueId();
+    }
+
+    CustomEvent event = new CustomEvent();
+    event.player_uuid = playerUuid;
+    event.event_type = args[2];
+    event.timestamp = new Date();
+    event.metadata = new HashMap<>();
+
+    for (int i = 3; i < args.length; i++) {
+        String[] keyValue = args[i].split("=");
+        if (keyValue.length == 2) {
+            event.metadata.put(keyValue[0], keyValue[1]);
+        }
+    }
+
+    api.insertCustomEvent(event)
+        .thenRun(() -> {
+            sender.sendMessage(colorize(PRIMARY_COLOR + "Custom event recorded successfully."));
+            if (!(sender instanceof ConsoleCommandSender) || plugin.getConfigManager().getBoolean("main", "debug")) {
+                plugin.getLogger().info("Custom event recorded: " + event.event_type);
+            }
+        })
+        .exceptionally(e -> {
+            sender.sendMessage(colorize("&cFailed to record custom event. Check console for details."));
+            return null;
+        });
+
+    return true;
+}
 
     private boolean handleCustomEvents(CommandSender sender) {
         MCMetricsAPI api = plugin.getApi();

@@ -21,5 +21,8 @@ custom-events:
 exempt:
   players: []
 
+# Debug mode - enables additional logging
+debug: false
+
 # Don't change this value
-config-version: 2
+config-version: 3

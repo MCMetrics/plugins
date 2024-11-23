@@ -165,16 +165,20 @@ public class ConsoleEventListener implements Listener {
                             customEvent.event_type = config.eventName;
                             customEvent.timestamp = new Date();
                             customEvent.metadata = metadata;
-
+                
                             plugin.getApi().insertCustomEvent(customEvent)
-                                .thenRun(() -> plugin.getLogger().info("Console-triggered custom event recorded: " + config.eventName))
+                                .thenRun(() -> {
+                                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                                        plugin.getLogger().info("Console-triggered custom event recorded: " + config.eventName);
+                                    }
+                                })
                                 .exceptionally(e -> {
                                     plugin.getLogger().warning("Failed to record console-triggered custom event: " + e.getMessage());
                                     return null;
                                 });
                         }
                     }
-                }.runTaskAsynchronously(plugin);
+                }.runTaskAsynchronously(plugin);                    
                 return true;
             }
         }

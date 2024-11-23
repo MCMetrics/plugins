@@ -64,20 +64,23 @@ public class MCMetricsCommand extends Command {
                 sendHelpMessage(sender);
                 break;
             default:
-                sender.sendMessage(new TextComponent(colorize("&cUnknown subcommand. Use '/mcmetricsbungee help' for a list of commands.")));
+                sender.sendMessage(new TextComponent(
+                        colorize("&cUnknown subcommand. Use '/mcmetricsbungee help' for a list of commands.")));
                 break;
         }
     }
 
     private void handlePayment(CommandSender sender, String[] args) {
         if (args.length != 6) {
-            sender.sendMessage(new TextComponent(colorize("&cUsage: /mcmetricsbungee payment <platform> <player uuid/username> <transaction_id> <amount> <currency>")));
+            sender.sendMessage(new TextComponent(colorize(
+                    "&cUsage: /mcmetricsbungee payment <platform> <player uuid/username> <transaction_id> <amount> <currency>")));
             return;
         }
 
         MCMetricsAPI api = plugin.getApi();
         if (api == null) {
-            sender.sendMessage(new TextComponent(colorize("&cMCMetrics is not properly configured. Please use '/mcmetricsbungee setup' to configure the plugin.")));
+            sender.sendMessage(new TextComponent(colorize(
+                    "&cMCMetrics is not properly configured. Please use '/mcmetricsbungee setup' to configure the plugin.")));
             return;
         }
 
@@ -95,7 +98,8 @@ public class MCMetricsCommand extends Command {
         } catch (IllegalArgumentException e) {
             ProxiedPlayer player = plugin.getProxy().getPlayer(args[2]);
             if (player == null) {
-                sender.sendMessage(new TextComponent(colorize("&cPlayer not found. Note that for offline players, you must use their UUID.")));
+                sender.sendMessage(new TextComponent(
+                        colorize("&cPlayer not found. Note that for offline players, you must use their UUID.")));
                 return;
             }
             playerUuid = player.getUniqueId();
@@ -120,22 +124,26 @@ public class MCMetricsCommand extends Command {
         payment.datetime = new Date();
 
         api.insertPayment(payment)
-                .thenRun(() -> sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "Payment recorded successfully for " + finalPlayerName + "."))))
+                .thenRun(() -> sender.sendMessage(new TextComponent(
+                        colorize(PRIMARY_COLOR + "Payment recorded successfully for " + finalPlayerName + "."))))
                 .exceptionally(e -> {
-                    sender.sendMessage(new TextComponent(colorize("&cFailed to record payment. Check console for details.")));
+                    sender.sendMessage(
+                            new TextComponent(colorize("&cFailed to record payment. Check console for details.")));
                     return null;
                 });
     }
 
     private void handleCustomEvent(CommandSender sender, String[] args) {
         if (args.length < 3) {
-            sender.sendMessage(new TextComponent(colorize("&cUsage: /mcmetricsbungee customevent <player_uuid> <event_type> [key1=value1 key2=value2 ...]")));
+            sender.sendMessage(new TextComponent(colorize(
+                    "&cUsage: /mcmetricsbungee customevent <player_uuid> <event_type> [key1=value1 key2=value2 ...]")));
             return;
         }
 
         MCMetricsAPI api = plugin.getApi();
         if (api == null) {
-            sender.sendMessage(new TextComponent(colorize("&cMCMetrics is not properly configured. Please use '/mcmetricsbungee setup' to configure the plugin.")));
+            sender.sendMessage(new TextComponent(colorize(
+                    "&cMCMetrics is not properly configured. Please use '/mcmetricsbungee setup' to configure the plugin.")));
             return;
         }
 
@@ -153,9 +161,16 @@ public class MCMetricsCommand extends Command {
         }
 
         api.insertCustomEvent(event)
-                .thenRun(() -> sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "Custom event recorded successfully."))))
+                .thenRun(() -> {
+                    sender.sendMessage(
+                            new TextComponent(colorize(PRIMARY_COLOR + "Custom event recorded successfully.")));
+                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                        plugin.getLogger().info("Custom event recorded: " + event.event_type);
+                    }
+                })
                 .exceptionally(e -> {
-                    sender.sendMessage(new TextComponent(colorize("&cFailed to record custom event. Check console for details.")));
+                    sender.sendMessage(
+                            new TextComponent(colorize("&cFailed to record custom event. Check console for details.")));
                     return null;
                 });
     }
@@ -176,9 +191,11 @@ public class MCMetricsCommand extends Command {
             plugin.getConfigManager().set("main", "server.key", args[2]);
             plugin.getConfigManager().saveConfig("main");
             plugin.reloadPlugin();
-            sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "MCMetrics configuration updated and reloaded.")));
+            sender.sendMessage(
+                    new TextComponent(colorize(PRIMARY_COLOR + "MCMetrics configuration updated and reloaded.")));
         } catch (IOException e) {
-            sender.sendMessage(new TextComponent(colorize("&cFailed to update configuration. Check console for details.")));
+            sender.sendMessage(
+                    new TextComponent(colorize("&cFailed to update configuration. Check console for details.")));
             plugin.getLogger().severe("Failed to update configuration: " + e.getMessage());
         }
     }
@@ -186,7 +203,8 @@ public class MCMetricsCommand extends Command {
     private void handleStatus(CommandSender sender) {
         MCMetricsAPI api = plugin.getApi();
         if (api == null) {
-            sender.sendMessage(new TextComponent(colorize("&cMCMetrics is not properly configured. Please use '/mcmetricsbungee setup' to configure the plugin.")));
+            sender.sendMessage(new TextComponent(colorize(
+                    "&cMCMetrics is not properly configured. Please use '/mcmetricsbungee setup' to configure the plugin.")));
             return;
         }
 
@@ -236,25 +254,34 @@ public class MCMetricsCommand extends Command {
         Map<String, Integer> groupedEvents = sessionManager.getGroupedCustomEvents(playerId);
         sender.sendMessage(new TextComponent(colorize("&7Custom events this session:")));
         for (Map.Entry<String, Integer> entry : groupedEvents.entrySet()) {
-            sender.sendMessage(new TextComponent(colorize("  &f" + entry.getKey() + ": &7" + entry.getValue() + " times")));
+            sender.sendMessage(
+                    new TextComponent(colorize("  &f" + entry.getKey() + ": &7" + entry.getValue() + " times")));
         }
 
         sender.sendMessage(new TextComponent(colorize("&7Payments this session:")));
         for (Payment payment : sessionManager.getSessionPayments(playerId)) {
-            sender.sendMessage(new TextComponent(colorize("  &f" + payment.amount + " " + payment.currency + " &7(" + payment.platform + ")")));
+            sender.sendMessage(new TextComponent(
+                    colorize("  &f" + payment.amount + " " + payment.currency + " &7(" + payment.platform + ")")));
         }
     }
 
     private void sendHelpMessage(CommandSender sender) {
-        sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "&lMCMetrics Commands &7(v" + plugin.getDescription().getVersion() + ")")));
-        sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "/mcmetricsbungee help &7- Show this help message")));
-        sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "/mcmetricsbungee setup &f<server_id> <server_key>")));
+        sender.sendMessage(new TextComponent(
+                colorize(PRIMARY_COLOR + "&lMCMetrics Commands &7(v" + plugin.getDescription().getVersion() + ")")));
+        sender.sendMessage(
+                new TextComponent(colorize(PRIMARY_COLOR + "/mcmetricsbungee help &7- Show this help message")));
+        sender.sendMessage(
+                new TextComponent(colorize(PRIMARY_COLOR + "/mcmetricsbungee setup &f<server_id> <server_key>")));
         sender.sendMessage(new TextComponent(colorize("  &7- Configure the plugin")));
-        sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "/mcmetricsbungee reload &7- Reload the configuration")));
-        sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "/mcmetricsbungee status &7- Show plugin status")));
-        sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "/mcmetricsbungee info &f<player name or uuid>")));
+        sender.sendMessage(
+                new TextComponent(colorize(PRIMARY_COLOR + "/mcmetricsbungee reload &7- Reload the configuration")));
+        sender.sendMessage(
+                new TextComponent(colorize(PRIMARY_COLOR + "/mcmetricsbungee status &7- Show plugin status")));
+        sender.sendMessage(
+                new TextComponent(colorize(PRIMARY_COLOR + "/mcmetricsbungee info &f<player name or uuid>")));
         sender.sendMessage(new TextComponent(colorize("  &7- Show player information")));
-        sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "/mcmetricsbungee payment &f<platform> <player_uuid>")));
+        sender.sendMessage(
+                new TextComponent(colorize(PRIMARY_COLOR + "/mcmetricsbungee payment &f<platform> <player_uuid>")));
         sender.sendMessage(new TextComponent(colorize("  &f<transaction_id> <amount> <currency>")));
         sender.sendMessage(new TextComponent(colorize("  &7- Record a payment")));
         sender.sendMessage(new TextComponent(colorize(PRIMARY_COLOR + "/mcmetricsbungee customevent &f<player_uuid>")));
@@ -263,6 +290,7 @@ public class MCMetricsCommand extends Command {
     }
 
     private String colorize(String message) {
-        return ChatColor.translateAlternateColorCodes('&', message.replace(PRIMARY_COLOR, ChatColor.of(PRIMARY_COLOR).toString()));
+        return ChatColor.translateAlternateColorCodes('&',
+                message.replace(PRIMARY_COLOR, ChatColor.of(PRIMARY_COLOR).toString()));
     }
 }

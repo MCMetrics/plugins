@@ -143,13 +143,13 @@ public class MCMetricsCommand implements SimpleCommand {
             source.sendMessage(Component.text("MCMetrics is not properly configured. Please use '/mcmetricsvelocity setup' to configure the plugin.").color(NamedTextColor.RED));
             return;
         }
-
+    
         CustomEvent event = new CustomEvent();
         event.player_uuid = UUID.fromString(playerUuid);
         event.event_type = eventType;
         event.timestamp = new Date();
         event.metadata = new HashMap<>();
-
+    
         String[] keyValuePairs = metadata.split(" ");
         for (String pair : keyValuePairs) {
             String[] keyValue = pair.split("=");
@@ -157,9 +157,15 @@ public class MCMetricsCommand implements SimpleCommand {
                 event.metadata.put(keyValue[0], keyValue[1]);
             }
         }
-
+    
         api.insertCustomEvent(event)
-                .thenRun(() -> source.sendMessage(Component.text("Custom event recorded successfully.").color(PRIMARY_COLOR)))
+                .thenRun(() -> {
+                    source.sendMessage(Component.text("Custom event recorded successfully.").color(PRIMARY_COLOR));
+                    if (!source.equals(plugin.getServer().getConsoleCommandSource()) || 
+                        plugin.getConfigManager().getBoolean("main", "debug")) {
+                        plugin.getLogger().info("Custom event recorded: " + event.event_type);
+                    }
+                })
                 .exceptionally(e -> {
                     source.sendMessage(Component.text("Failed to record custom event. Check console for details.").color(NamedTextColor.RED));
                     return null;

@@ -15,6 +15,7 @@ import java.util.logging.Logger;
 import java.time.Instant;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 
 public class MCMetricsAPI {
     private static final String API_BASE_URL = "https://ingest.mcmetrics.net/v1";
@@ -33,7 +34,11 @@ public class MCMetricsAPI {
         this.serverId = serverId;
         this.serverKey = serverKey;
         this.logger = logger;
-        this.httpClient = new OkHttpClient.Builder().build();
+        this.httpClient = new OkHttpClient.Builder()
+            .connectTimeout(45, TimeUnit.SECONDS)
+            .writeTimeout(45, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .build();
         this.gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
                 .create();

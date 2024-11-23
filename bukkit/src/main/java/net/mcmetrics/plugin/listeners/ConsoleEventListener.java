@@ -167,7 +167,7 @@ public class ConsoleEventListener implements Listener {
                             customEvent.metadata = metadata;
 
                             plugin.getApi().insertCustomEvent(customEvent)
-                                // .thenRun(() -> plugin.getLogger().info("Console-triggered custom event recorded: " + config.eventName))
+                                .thenRun(() -> plugin.getLogger().info("Console-triggered custom event recorded: " + config.eventName))
                                 .exceptionally(e -> {
                                     plugin.getLogger().warning("Failed to record console-triggered custom event: " + e.getMessage());
                                     return null;

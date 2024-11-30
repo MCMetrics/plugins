@@ -21,8 +21,8 @@ public final class MCMetricsBungeePlugin extends Plugin {
     public void onEnable() {
         configManager = new ConfigManager();
         try {
-            configManager.loadConfig("main", getDataFolder(), "config.yml", 
-                getResourceAsStream("config.yml"), getLogger());
+            configManager.loadConfig("main", getDataFolder(), "config.yml",
+                    getResourceAsStream("config.yml"), getLogger());
         } catch (IOException e) {
             getLogger().severe("Failed to load configuration: " + e.getMessage());
             return;
@@ -41,7 +41,8 @@ public final class MCMetricsBungeePlugin extends Plugin {
         String serverKey = configManager.getString("main", "server.key");
 
         if (serverId == null || serverKey == null || serverId.isEmpty() || serverKey.isEmpty()) {
-            getLogger().warning("Server ID or Server Key not set in config.yml. Please use /mcmetricsbungee setup to configure the plugin.");
+            getLogger().warning(
+                    "Server ID or Server Key not set in config.yml. Please use /mcmetricsbungee setup to configure the plugin.");
             return;
         }
 
@@ -56,20 +57,25 @@ public final class MCMetricsBungeePlugin extends Plugin {
                 api.insertSession(session).join(); // Wait for each session to be inserted
             });
         }
+
+        if (api != null) {
+            api.shutdown();
+        }
         getLogger().info("MCMetrics plugin disabled.");
     }
 
     private void startServerPingTask() {
         getProxy().getScheduler().schedule(this, () -> {
             if (api == null) {
-                getLogger().warning("MCMetrics API is not initialized. Please use /mcmetricsbungee setup to configure the plugin.");
+                getLogger().warning(
+                        "MCMetrics API is not initialized. Please use /mcmetricsbungee setup to configure the plugin.");
                 return;
             }
 
             ServerPing ping = new ServerPing();
             ping.time = new Date();
             ping.player_count = getProxy().getOnlineCount();
-            
+
             // Count Bedrock players by UUID format
             int bedrockCount = 0;
             for (ProxiedPlayer player : getProxy().getPlayers()) {
@@ -77,12 +83,11 @@ public final class MCMetricsBungeePlugin extends Plugin {
                     bedrockCount++;
                 }
             }
-            
+
             ping.bedrock_player_count = bedrockCount;
             ping.java_player_count = ping.player_count - bedrockCount;
 
-            api.insertServerPing(ping).thenRun(() -> 
-                getLogger().info("Server ping recorded successfully."));
+            api.insertServerPing(ping).thenRun(() -> getLogger().info("Server ping recorded successfully."));
         }, 0, 60, TimeUnit.SECONDS);
     }
 

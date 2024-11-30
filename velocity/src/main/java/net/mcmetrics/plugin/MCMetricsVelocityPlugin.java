@@ -23,13 +23,8 @@ import java.util.Date;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
-@Plugin(
-        id = "mcmetrics",
-        name = "MCMetrics",
-        version = "@VERSION@",
-        description = "The MCMetrics Velocity plugin",
-        authors = {"MCMetrics Team"}
-)
+@Plugin(id = "mcmetrics", name = "MCMetrics", version = "@VERSION@", description = "The MCMetrics Velocity plugin", authors = {
+        "MCMetrics Team" })
 public class MCMetricsVelocityPlugin {
     private final ProxyServer server;
     private final Logger logger;
@@ -79,6 +74,10 @@ public class MCMetricsVelocityPlugin {
                 api.insertSession(session).join(); // Wait for each session to be inserted
             });
         }
+
+        if (api != null) {
+            api.shutdown();
+        }
         logger.info("MCMetrics plugin disabled.");
     }
 
@@ -87,7 +86,8 @@ public class MCMetricsVelocityPlugin {
         String serverKey = configManager.getString("main", "server.key");
 
         if (serverId == null || serverKey == null || serverId.isEmpty() || serverKey.isEmpty()) {
-            logger.warning("Server ID or Server Key not set in config.yml. Please use /mcmetricsvelocity setup to configure the plugin.");
+            logger.warning(
+                    "Server ID or Server Key not set in config.yml. Please use /mcmetricsvelocity setup to configure the plugin.");
             return;
         }
 
@@ -103,19 +103,20 @@ public class MCMetricsVelocityPlugin {
 
     private void recordServerPing() {
         if (api == null) {
-            logger.warning("MCMetrics API is not initialized. Please use /mcmetricsvelocity setup to configure the plugin.");
+            logger.warning(
+                    "MCMetrics API is not initialized. Please use /mcmetricsvelocity setup to configure the plugin.");
             return;
         }
 
         ServerPing ping = new ServerPing();
         ping.time = new Date();
         ping.player_count = server.getPlayerCount();
-        
+
         // Count Bedrock players by UUID format
         int bedrockCount = (int) server.getAllPlayers().stream()
-            .filter(player -> player.getUniqueId().toString().startsWith("00000000-0000-0000"))
-            .count();
-            
+                .filter(player -> player.getUniqueId().toString().startsWith("00000000-0000-0000"))
+                .count();
+
         ping.bedrock_player_count = bedrockCount;
         ping.java_player_count = ping.player_count - bedrockCount;
         api.insertServerPing(ping).thenRun(() -> logger.info("Server ping recorded successfully."));

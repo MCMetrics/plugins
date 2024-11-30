@@ -19,7 +19,8 @@ import java.util.regex.Pattern;
 public class ConsoleEventListener implements Listener {
     private final MCMetricsSpigotPlugin plugin;
     private final Map<Pattern, ConsoleEventConfig> eventPatterns = new HashMap<>();
-    private static final Pattern TIMESTAMP_PATTERN = Pattern.compile("\\[\\d{2}:\\d{2}:\\d{2}(?:\\s+[A-Z]+)?\\]:\\s*(.*)");
+    private static final Pattern TIMESTAMP_PATTERN = Pattern
+            .compile("\\[\\d{2}:\\d{2}:\\d{2}(?:\\s+[A-Z]+)?\\]:\\s*(.*)");
     private ConsoleAppender appender;
 
     public ConsoleEventListener(MCMetricsSpigotPlugin plugin) {
@@ -49,18 +50,20 @@ public class ConsoleEventListener implements Listener {
 
     public void shutdown() {
         if (appender != null) {
-            ((Logger) LogManager.getRootLogger()).removeAppender(appender);
+            // Stop first, so it stops accepting new log events
             appender.stop();
+            // Then remove from root logger
+            ((Logger) LogManager.getRootLogger()).removeAppender(appender);
         }
     }
 
     public void loadEventPatterns() {
         eventPatterns.clear();
         List<Map<String, Object>> customEvents = plugin.getConfigManager().getCustomEvents("main");
-        
+
         int successfulPatterns = 0;
         plugin.getLogger().info("Loading console event patterns...");
-        
+
         for (Map<String, Object> event : customEvents) {
             String type = (String) event.get("type");
             if (!"console".equals(type)) {
@@ -70,17 +73,16 @@ public class ConsoleEventListener implements Listener {
             String name = (String) event.get("name");
             String consolePattern = (String) event.get("console-pattern");
             Integer playerField = (Integer) event.get("player-field");
-            
+
             plugin.getLogger().info("Found console event config: " + name + " (pattern: " + consolePattern + ")");
-            
+
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> metadata = (List<Map<String, Object>>) event.get("metadata");
-            
+
             ConsoleEventConfig config = new ConsoleEventConfig(
-                name,
-                playerField,
-                parseMetadataConfig(metadata)
-            );
+                    name,
+                    playerField,
+                    parseMetadataConfig(metadata));
 
             try {
                 Pattern pattern = Pattern.compile(consolePattern);
@@ -91,13 +93,14 @@ public class ConsoleEventListener implements Listener {
                 plugin.getLogger().warning("Invalid console pattern for event " + name + ": " + e.getMessage());
             }
         }
-        
+
         plugin.getLogger().info("Loaded " + successfulPatterns + " console event patterns successfully");
     }
 
     private List<MetadataField> parseMetadataConfig(List<Map<String, Object>> metadata) {
         List<MetadataField> fields = new ArrayList<>();
-        if (metadata == null) return fields;
+        if (metadata == null)
+            return fields;
 
         for (Map<String, Object> field : metadata) {
             for (Map.Entry<String, Object> entry : field.entrySet()) {
@@ -114,7 +117,7 @@ public class ConsoleEventListener implements Listener {
     }
 
     public void processConsoleMessage(String message) {
-        
+
         // Try matching both the original message and the message with timestamp removed
         String messageWithoutTimestamp = message;
         Matcher timestampMatcher = TIMESTAMP_PATTERN.matcher(message);
@@ -131,17 +134,18 @@ public class ConsoleEventListener implements Listener {
     private boolean tryMatchMessage(String message) {
         for (Map.Entry<Pattern, ConsoleEventConfig> entry : eventPatterns.entrySet()) {
             Matcher matcher = entry.getKey().matcher(message);
-            
+
             if (matcher.matches()) {
                 ConsoleEventConfig config = entry.getValue();
-                
+
                 String playerIdentifier = null;
                 if (config.playerField <= matcher.groupCount()) {
                     playerIdentifier = matcher.group(config.playerField);
                 }
 
                 if (playerIdentifier == null) {
-                    plugin.getLogger().warning("Could not find player identifier in console message for event " + config.eventName);
+                    plugin.getLogger().warning(
+                            "Could not find player identifier in console message for event " + config.eventName);
                     continue;
                 }
 
@@ -165,20 +169,22 @@ public class ConsoleEventListener implements Listener {
                             customEvent.event_type = config.eventName;
                             customEvent.timestamp = new Date();
                             customEvent.metadata = metadata;
-                
+
                             plugin.getApi().insertCustomEvent(customEvent)
-                                .thenRun(() -> {
-                                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
-                                        plugin.getLogger().info("Console-triggered custom event recorded: " + config.eventName);
-                                    }
-                                })
-                                .exceptionally(e -> {
-                                    plugin.getLogger().warning("Failed to record console-triggered custom event: " + e.getMessage());
-                                    return null;
-                                });
+                                    .thenRun(() -> {
+                                        if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                                            plugin.getLogger().info(
+                                                    "Console-triggered custom event recorded: " + config.eventName);
+                                        }
+                                    })
+                                    .exceptionally(e -> {
+                                        plugin.getLogger().warning(
+                                                "Failed to record console-triggered custom event: " + e.getMessage());
+                                        return null;
+                                    });
                         }
                     }
-                }.runTaskAsynchronously(plugin);                    
+                }.runTaskAsynchronously(plugin);
                 return true;
             }
         }
@@ -207,19 +213,26 @@ public class ConsoleEventListener implements Listener {
             this.playerField = playerField;
         }
 
-        public String getName() { return name; }
-        public String getPattern() { return pattern; }
-        public int getPlayerField() { return playerField; }
+        public String getName() {
+            return name;
+        }
+
+        public String getPattern() {
+            return pattern;
+        }
+
+        public int getPlayerField() {
+            return playerField;
+        }
     }
 
     public List<EventPatternInfo> getEventPatternsInfo() {
         List<EventPatternInfo> patterns = new ArrayList<>();
         for (Map.Entry<Pattern, ConsoleEventConfig> entry : eventPatterns.entrySet()) {
             patterns.add(new EventPatternInfo(
-                entry.getValue().eventName,
-                entry.getKey().pattern(),
-                entry.getValue().playerField
-            ));
+                    entry.getValue().eventName,
+                    entry.getKey().pattern(),
+                    entry.getValue().playerField));
         }
         return patterns;
     }

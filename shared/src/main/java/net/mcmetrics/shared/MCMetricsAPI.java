@@ -5,25 +5,33 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.mcmetrics.shared.models.*;
-import okhttp3.*;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.Queue;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
-import java.time.Instant;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
 
 public class MCMetricsAPI {
     private static final String API_BASE_URL = "https://ingest.mcmetrics.net/v1";
-    private final OkHttpClient httpClient;
+    private final CloseableHttpClient httpClient;
     private final Gson gson;
     private final String serverId;
     private final String serverKey;
     private final Logger logger;
+    private final ExecutorService executorService;
 
     private final AtomicInteger requestCount;
     private final AtomicInteger errorCount;
@@ -34,14 +42,29 @@ public class MCMetricsAPI {
         this.serverId = serverId;
         this.serverKey = serverKey;
         this.logger = logger;
-        this.httpClient = new OkHttpClient.Builder()
-            .connectTimeout(45, TimeUnit.SECONDS)
-            .writeTimeout(45, TimeUnit.SECONDS)
-            .readTimeout(45, TimeUnit.SECONDS)
-            .build();
+
+        // The API may take multiple seconds to respond, per request
+        // So we need a sizable connection pool limit
+        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+        connectionManager.setMaxTotal(1000);
+        connectionManager.setDefaultMaxPerRoute(500);
+
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setConnectTimeout(45 * 1000)
+                .setSocketTimeout(45 * 1000)
+                .setConnectionRequestTimeout(45 * 1000)
+                .build();
+
+        this.httpClient = HttpClients.custom()
+                .setConnectionManager(connectionManager)
+                .setDefaultRequestConfig(requestConfig)
+                .build();
+
         this.gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
                 .create();
+
+        this.executorService = Executors.newCachedThreadPool();
         this.requestCount = new AtomicInteger(0);
         this.errorCount = new AtomicInteger(0);
         this.requestTimes = new ConcurrentLinkedQueue<>();
@@ -78,59 +101,71 @@ public class MCMetricsAPI {
     }
 
     private <T, R> CompletableFuture<R> makeRequest(String method, String endpoint, T data, Class<R> responseClass) {
-        Request.Builder requestBuilder = new Request.Builder()
-                .url(API_BASE_URL + endpoint)
-                .addHeader("Content-Type", "application/json")
-                .addHeader("X-Server-ID", serverId)
-                .addHeader("X-Server-Key", serverKey);
-
-        if (method.equals("POST") && data != null) {
-            String json = gson.toJson(data);
-            requestBuilder.post(RequestBody.create(json, MediaType.parse("application/json")));
-        } else if (method.equals("GET")) {
-            requestBuilder.get();
-        }
-
-        Request request = requestBuilder.build();
         CompletableFuture<R> future = new CompletableFuture<>();
 
-        incrementRequestCount();
+        executorService.submit(() -> {
+            try {
+                incrementRequestCount();
+                String url = API_BASE_URL + endpoint;
 
-        httpClient.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                logger.severe("[MCMetrics Debug] Network failure: " + e.getMessage());
-                incrementErrorCount();
-                future.completeExceptionally(new MCMetricsException("NETWORK_ERROR", "Network error: " + e.getMessage(), logger));
-            }            
+                if (method.equals("POST")) {
+                    HttpPost request = new HttpPost(url);
+                    request.addHeader("Content-Type", "application/json");
+                    request.addHeader("X-Server-ID", serverId);
+                    request.addHeader("X-Server-Key", serverKey);
 
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                try (ResponseBody responseBody = response.body()) {
-                    String responseStr = responseBody != null ? responseBody.string() : "No response body";
+                    if (data != null) {
+                        String json = gson.toJson(data);
+                        request.setEntity(new StringEntity(json));
+                    }
 
-                    if (!response.isSuccessful()) {
-                        incrementErrorCount();
-                        MCMetricsException exception = parseErrorResponse(responseStr);
-                        future.completeExceptionally(exception);
-                    } else {
-                        if (responseClass == Void.class) {
-                            future.complete(null);
-                        } else {
-                            try {
-                                R result = gson.fromJson(responseStr, responseClass);
-                                future.complete(result);
-                            } catch (Exception e) {
-                                logger.severe("[MCMetrics Debug] Failed to parse response: " + e.getMessage());
-                                future.completeExceptionally(new MCMetricsException("PARSE_ERROR", "Failed to parse response: " + e.getMessage(), logger));
-                            }
-                        }
+                    try (CloseableHttpResponse response = httpClient.execute(request)) {
+                        handleResponse(response, responseClass, future);
+                    }
+                } else if (method.equals("GET")) {
+                    HttpGet request = new HttpGet(url);
+                    request.addHeader("Content-Type", "application/json");
+                    request.addHeader("X-Server-ID", serverId);
+                    request.addHeader("X-Server-Key", serverKey);
+
+                    try (CloseableHttpResponse response = httpClient.execute(request)) {
+                        handleResponse(response, responseClass, future);
                     }
                 }
+            } catch (Exception e) {
+                logger.severe("[MCMetrics Debug] Network failure: " + e.getMessage());
+                incrementErrorCount();
+                future.completeExceptionally(
+                        new MCMetricsException("NETWORK_ERROR", "Network error: " + e.getMessage(), logger));
             }
         });
 
         return future;
+    }
+
+    private <R> void handleResponse(CloseableHttpResponse response, Class<R> responseClass, CompletableFuture<R> future)
+            throws IOException {
+        HttpEntity entity = response.getEntity();
+        String responseStr = entity != null ? EntityUtils.toString(entity) : "No response body";
+
+        if (response.getStatusLine().getStatusCode() >= 200 && response.getStatusLine().getStatusCode() < 300) {
+            if (responseClass == Void.class) {
+                future.complete(null);
+            } else {
+                try {
+                    R result = gson.fromJson(responseStr, responseClass);
+                    future.complete(result);
+                } catch (Exception e) {
+                    logger.severe("[MCMetrics Debug] Failed to parse response: " + e.getMessage());
+                    future.completeExceptionally(new MCMetricsException("PARSE_ERROR",
+                            "Failed to parse response: " + e.getMessage(), logger));
+                }
+            }
+        } else {
+            incrementErrorCount();
+            MCMetricsException exception = parseErrorResponse(responseStr);
+            future.completeExceptionally(exception);
+        }
     }
 
     private MCMetricsException parseErrorResponse(String errorBody) {
@@ -187,16 +222,21 @@ public class MCMetricsAPI {
 
             switch (errorType) {
                 case "NETWORK_ERROR":
-                    logger.severe("A network error occurred while making a request to the MCMetrics API. Network error: " + message);
+                    logger.severe(
+                            "A network error occurred while making a request to the MCMetrics API. Network error: "
+                                    + message);
                     break;
                 case "AUTH_ERROR":
-                    logger.warning("A network error occurred while making a request to the MCMetrics API. Did you run the /mcmetrics setup command? Error: " + message);
+                    logger.warning(
+                            "A network error occurred while making a request to the MCMetrics API. Did you run the /mcmetrics setup command? Error: "
+                                    + message);
                     break;
                 case "RATE_LIMIT":
                     logger.warning("API rate limit exceeded while making a request to the MCMetrics API: " + message);
                     break;
                 case "MISC_ERROR":
-                    logger.severe("A miscellaneous error occurred while making a request to the MCMetrics API: " + message);
+                    logger.severe(
+                            "A miscellaneous error occurred while making a request to the MCMetrics API: " + message);
                     break;
                 case "UNKNOWN_ERROR":
                     logger.severe("Unknown error occurred while making a request to the MCMetrics API: " + message);
@@ -205,6 +245,16 @@ public class MCMetricsAPI {
                     logger.severe("Failed to parse error response from the MCMetrics API: " + message);
                     break;
             }
+        }
+    }
+
+    public void shutdown() {
+        try {
+            executorService.shutdown();
+            executorService.awaitTermination(30, TimeUnit.SECONDS);
+            httpClient.close();
+        } catch (Exception e) {
+            logger.warning("Error shutting down MCMetricsAPI: " + e.getMessage());
         }
     }
 }

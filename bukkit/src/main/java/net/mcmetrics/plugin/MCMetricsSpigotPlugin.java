@@ -27,8 +27,8 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
     public void onEnable() {
         configManager = new ConfigManager();
         try {
-            configManager.loadConfig("main", getDataFolder(), "config.yml", 
-                getClass().getResourceAsStream("/config.yml"), getLogger());
+            configManager.loadConfig("main", getDataFolder(), "config.yml",
+                    getClass().getResourceAsStream("/config.yml"), getLogger());
         } catch (IOException e) {
             getLogger().severe("Failed to load configuration: " + e.getMessage());
             getServer().getPluginManager().disablePlugin(this);
@@ -40,7 +40,7 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         initializeAPI();
         sessionManager = new SessionManager(api);
         abTestManager = new ABTestManager(this, api, getLogger());
-        
+
         // event listeners
         getServer().getPluginManager().registerEvents(new PlayerSessionListener(this, sessionManager), this);
         getServer().getPluginManager().registerEvents(new ABTestListener(this), this);
@@ -48,14 +48,14 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
 
         consoleEventListener = new ConsoleEventListener(this);
         getServer().getPluginManager().registerEvents(consoleEventListener, this);
-        
+
         // commands
         getCommand("mcmetrics").setExecutor(new MCMetricsCommand(this));
-        
+
         fetchABTests();
 
         startServerPingTask();
-        
+
         getLogger().info("MCMetrics plugin has been enabled. Thank you for using MCMetrics!");
     }
 
@@ -72,7 +72,8 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         String serverKey = configManager.getString("main", "server.key");
 
         if (serverId == null || serverKey == null || serverId.isEmpty() || serverKey.isEmpty()) {
-            getLogger().warning("Server ID or Server Key not set in config.yml. Please use /mcmetrics setup to configure the plugin.");
+            getLogger().warning(
+                    "Server ID or Server Key not set in config.yml. Please use /mcmetrics setup to configure the plugin.");
             return;
         }
 
@@ -93,6 +94,10 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         if (consoleEventListener != null) {
             consoleEventListener.shutdown();
         }
+
+        if (api != null) {
+            api.shutdown();
+        }
         getLogger().info("MCMetrics plugin disabled.");
     }
 
@@ -101,7 +106,8 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
             @Override
             public void run() {
                 if (api == null) {
-                    getLogger().warning("MCMetrics API is not initialized. Please use /mcmetrics setup to configure the plugin.");
+                    getLogger().warning(
+                            "MCMetrics API is not initialized. Please use /mcmetrics setup to configure the plugin.");
                     return;
                 }
 
@@ -109,13 +115,12 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
                 ping.time = new Date();
                 ping.player_count = getServer().getOnlinePlayers().size();
                 ping.bedrock_player_count = (int) getServer().getOnlinePlayers().stream()
-                    .map(player -> player.getUniqueId().toString())
-                    .filter(uuid -> uuid.startsWith("00000000-0000-0000"))
-                    .count();
+                        .map(player -> player.getUniqueId().toString())
+                        .filter(uuid -> uuid.startsWith("00000000-0000-0000"))
+                        .count();
                 ping.java_player_count = ping.player_count - ping.bedrock_player_count;
 
-                api.insertServerPing(ping).thenRun(() -> 
-                    getLogger().info("Server ping recorded successfully."));
+                api.insertServerPing(ping).thenRun(() -> getLogger().info("Server ping recorded successfully."));
             }
         }.runTaskTimerAsynchronously(this, 0L, 60L * 10); // Run every 60 seconds
     }

@@ -27,9 +27,19 @@ public class MCMetricsCommand implements SimpleCommand {
     }
 
     @Override
+    public boolean hasPermission(final Invocation invocation) {
+        return invocation.source().hasPermission("mcmetrics.admin");
+    }
+
+    @Override
     public void execute(Invocation invocation) {
         CommandSource source = invocation.source();
         String[] args = invocation.arguments();
+
+        if (!source.hasPermission("mcmetrics.admin")) {
+            source.sendMessage(Component.text("You don't have permission to use this command.").color(NamedTextColor.RED));
+            return;
+        }
 
         if (args.length == 0) {
             sendHelpMessage(source);
@@ -77,11 +87,6 @@ public class MCMetricsCommand implements SimpleCommand {
                 sendHelpMessage(source);
                 break;
         }
-    }
-
-    @Override
-    public boolean hasPermission(Invocation invocation) {
-        return invocation.source().hasPermission("mcmetrics.admin");
     }
 
     private void handlePayment(CommandSource source, String platform, String playerArg, String transactionId, String amount, String currency) {

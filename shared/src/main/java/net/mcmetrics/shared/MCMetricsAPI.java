@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 public class MCMetricsAPI {
-    private static final String API_BASE_URL = "https://ingest.mcmetrics.net/v1";
+    private static final String API_BASE_URL = "https://ingest.services.mcmetrics.net/v1";
     private final CloseableHttpClient httpClient;
     private final Gson gson;
     private final String serverId;

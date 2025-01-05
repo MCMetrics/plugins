@@ -5,18 +5,11 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.mcmetrics.shared.models.*;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.apache.http.util.EntityUtils;
 
-import java.io.IOException;
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Queue;
@@ -26,7 +19,6 @@ import java.util.logging.Logger;
 
 public class MCMetricsAPI {
     private static final String API_BASE_URL = "https://ingest.services.mcmetrics.net/v1";
-    private final CloseableHttpClient httpClient;
     private final Gson gson;
     private final String serverId;
     private final String serverKey;
@@ -42,23 +34,6 @@ public class MCMetricsAPI {
         this.serverId = serverId;
         this.serverKey = serverKey;
         this.logger = logger;
-
-        // The API may take multiple seconds to respond, per request
-        // So we need a sizable connection pool limit
-        PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
-        connectionManager.setMaxTotal(1000);
-        connectionManager.setDefaultMaxPerRoute(500);
-
-        RequestConfig requestConfig = RequestConfig.custom()
-                .setConnectTimeout(45 * 1000)
-                .setSocketTimeout(45 * 1000)
-                .setConnectionRequestTimeout(45 * 1000)
-                .build();
-
-        this.httpClient = HttpClients.custom()
-                .setConnectionManager(connectionManager)
-                .setDefaultRequestConfig(requestConfig)
-                .build();
 
         this.gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
@@ -104,51 +79,74 @@ public class MCMetricsAPI {
         CompletableFuture<R> future = new CompletableFuture<>();
 
         executorService.submit(() -> {
+            HttpURLConnection connection = null;
             try {
                 incrementRequestCount();
-                String url = API_BASE_URL + endpoint;
+                URL url = new URL(API_BASE_URL + endpoint);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod(method);
+                connection.setConnectTimeout(45000);
+                connection.setReadTimeout(45000);
+                
+                // Set headers
+                connection.setRequestProperty("Content-Type", "application/json");
+                connection.setRequestProperty("X-Server-ID", serverId);
+                connection.setRequestProperty("X-Server-Key", serverKey);
 
-                if (method.equals("POST")) {
-                    HttpPost request = new HttpPost(url);
-                    request.addHeader("Content-Type", "application/json");
-                    request.addHeader("X-Server-ID", serverId);
-                    request.addHeader("X-Server-Key", serverKey);
-
-                    if (data != null) {
-                        String json = gson.toJson(data);
-                        request.setEntity(new StringEntity(json));
-                    }
-
-                    try (CloseableHttpResponse response = httpClient.execute(request)) {
-                        handleResponse(response, responseClass, future);
-                    }
-                } else if (method.equals("GET")) {
-                    HttpGet request = new HttpGet(url);
-                    request.addHeader("Content-Type", "application/json");
-                    request.addHeader("X-Server-ID", serverId);
-                    request.addHeader("X-Server-Key", serverKey);
-
-                    try (CloseableHttpResponse response = httpClient.execute(request)) {
-                        handleResponse(response, responseClass, future);
+                if (method.equals("POST") && data != null) {
+                    connection.setDoOutput(true);
+                    String json = gson.toJson(data);
+                    try (OutputStream os = connection.getOutputStream()) {
+                        byte[] input = json.getBytes(StandardCharsets.UTF_8);
+                        os.write(input, 0, input.length);
                     }
                 }
+
+                int responseCode = connection.getResponseCode();
+                String responseBody;
+                
+                if (responseCode >= 200 && responseCode < 300) {
+                    responseBody = readInputStream(connection.getInputStream());
+                } else {
+                    responseBody = readInputStream(connection.getErrorStream());
+                }
+
+                handleResponse(responseCode, responseBody, responseClass, future);
             } catch (Exception e) {
                 logger.severe("[MCMetrics Debug] Network failure: " + e.getMessage());
                 incrementErrorCount();
                 future.completeExceptionally(
-                        new MCMetricsException("NETWORK_ERROR", "Network error: " + e.getMessage(), logger));
+                    new MCMetricsException("NETWORK_ERROR", "Network error: " + e.getMessage(), logger)
+                );
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
             }
         });
 
         return future;
     }
 
-    private <R> void handleResponse(CloseableHttpResponse response, Class<R> responseClass, CompletableFuture<R> future)
-            throws IOException {
-        HttpEntity entity = response.getEntity();
-        String responseStr = entity != null ? EntityUtils.toString(entity) : "No response body";
+    private String readInputStream(InputStream inputStream) throws IOException {
+        if (inputStream == null) {
+            return "";
+        }
+        
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        StringBuilder response = new StringBuilder();
+        String line;
+        
+        while ((line = reader.readLine()) != null) {
+            response.append(line);
+        }
+        reader.close();
+        
+        return response.toString();
+    }
 
-        if (response.getStatusLine().getStatusCode() >= 200 && response.getStatusLine().getStatusCode() < 300) {
+    private <R> void handleResponse(int statusCode, String responseStr, Class<R> responseClass, CompletableFuture<R> future) {
+        if (statusCode >= 200 && statusCode < 300) {
             if (responseClass == Void.class) {
                 future.complete(null);
             } else {
@@ -252,7 +250,6 @@ public class MCMetricsAPI {
         try {
             executorService.shutdown();
             executorService.awaitTermination(30, TimeUnit.SECONDS);
-            httpClient.close();
         } catch (Exception e) {
             logger.warning("Error shutting down MCMetricsAPI: " + e.getMessage());
         }

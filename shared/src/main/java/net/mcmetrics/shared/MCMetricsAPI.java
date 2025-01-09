@@ -2,17 +2,26 @@ package net.mcmetrics.shared;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializationContext;
+import com.google.gson.JsonSerializer;
+import java.lang.reflect.Type;
+
 import net.mcmetrics.shared.models.*;
 
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.Queue;
+import java.util.TimeZone;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
@@ -37,6 +46,18 @@ public class MCMetricsAPI {
 
         this.gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                // Convert to UTC if the server timezone is not UTC
+                .registerTypeAdapter(Date.class, new JsonSerializer<Date>() {
+                    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+                    {
+                        dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+                    }
+
+                    @Override
+                    public JsonElement serialize(Date src, Type typeOfSrc, JsonSerializationContext context) {
+                        return new JsonPrimitive(dateFormat.format(src));
+                    }
+                })
                 .create();
 
         this.executorService = Executors.newCachedThreadPool();
@@ -87,7 +108,7 @@ public class MCMetricsAPI {
                 connection.setRequestMethod(method);
                 connection.setConnectTimeout(45000);
                 connection.setReadTimeout(45000);
-                
+
                 // Set headers
                 connection.setRequestProperty("Content-Type", "application/json");
                 connection.setRequestProperty("X-Server-ID", serverId);
@@ -104,7 +125,7 @@ public class MCMetricsAPI {
 
                 int responseCode = connection.getResponseCode();
                 String responseBody;
-                
+
                 if (responseCode >= 200 && responseCode < 300) {
                     responseBody = readInputStream(connection.getInputStream());
                 } else {
@@ -116,8 +137,7 @@ public class MCMetricsAPI {
                 logger.severe("[MCMetrics Debug] Network failure: " + e.getMessage());
                 incrementErrorCount();
                 future.completeExceptionally(
-                    new MCMetricsException("NETWORK_ERROR", "Network error: " + e.getMessage(), logger)
-                );
+                        new MCMetricsException("NETWORK_ERROR", "Network error: " + e.getMessage(), logger));
             } finally {
                 if (connection != null) {
                     connection.disconnect();
@@ -132,20 +152,21 @@ public class MCMetricsAPI {
         if (inputStream == null) {
             return "";
         }
-        
+
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
         StringBuilder response = new StringBuilder();
         String line;
-        
+
         while ((line = reader.readLine()) != null) {
             response.append(line);
         }
         reader.close();
-        
+
         return response.toString();
     }
 
-    private <R> void handleResponse(int statusCode, String responseStr, Class<R> responseClass, CompletableFuture<R> future) {
+    private <R> void handleResponse(int statusCode, String responseStr, Class<R> responseClass,
+            CompletableFuture<R> future) {
         if (statusCode >= 200 && statusCode < 300) {
             if (responseClass == Void.class) {
                 future.complete(null);

@@ -202,8 +202,10 @@ public class MCMetricsCommand implements SimpleCommand {
             return;
         }
 
+        String version = plugin.getClass().getPackage().getImplementationVersion();
+
         source.sendMessage(Component.text("MCMetrics Status").color(PRIMARY_COLOR).decorate(TextDecoration.BOLD));
-        source.sendMessage(Component.text("Plugin version: ").color(NamedTextColor.GRAY).append(Component.text(plugin.getClass().getPackage().getImplementationVersion()).color(NamedTextColor.WHITE)));
+        source.sendMessage(Component.text("Plugin version: ").color(NamedTextColor.GRAY).append(Component.text(version != null ? version : "unknown").color(NamedTextColor.WHITE)));
         source.sendMessage(Component.text("Active sessions: ").color(NamedTextColor.GRAY).append(Component.text(plugin.getActiveSessionCount()).color(NamedTextColor.WHITE)));
         source.sendMessage(Component.text("API requests in the last hour: ").color(NamedTextColor.GRAY).append(Component.text(api.getRequestCount()).color(NamedTextColor.WHITE)));
         source.sendMessage(Component.text("API errors in the last hour: ").color(NamedTextColor.GRAY).append(Component.text(api.getErrorCount()).color(NamedTextColor.WHITE)));

@@ -127,8 +127,10 @@ public class MCMetricsCommand extends Command {
                 .thenRun(() -> sender.sendMessage(new TextComponent(
                         colorize(PRIMARY_COLOR + "Payment recorded successfully for " + finalPlayerName + "."))))
                 .exceptionally(e -> {
-                    sender.sendMessage(
-                            new TextComponent(colorize("&cFailed to record payment. Check console for details.")));
+                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                        sender.sendMessage(
+                                new TextComponent(colorize("&cFailed to record payment. Check console for details.")));
+                    }
                     return null;
                 });
     }
@@ -169,8 +171,11 @@ public class MCMetricsCommand extends Command {
                     }
                 })
                 .exceptionally(e -> {
-                    sender.sendMessage(
-                            new TextComponent(colorize("&cFailed to record custom event. Check console for details.")));
+                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                        sender.sendMessage(
+                                new TextComponent(
+                                        colorize("&cFailed to record custom event. Check console for details.")));
+                    }
                     return null;
                 });
     }

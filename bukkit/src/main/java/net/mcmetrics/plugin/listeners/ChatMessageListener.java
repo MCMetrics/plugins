@@ -34,7 +34,9 @@ public class ChatMessageListener implements Listener {
 
         plugin.getApi().insertChatMessage(chatMessage)
                 .exceptionally(throwable -> {
-                    plugin.getLogger().warning("Failed to record chat message: " + throwable.getMessage());
+                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                        plugin.getLogger().warning("Failed to record chat message: " + throwable.getMessage());
+                    }
                     return null;
                 });
     }

@@ -37,7 +37,8 @@ public class MCMetricsCommand implements SimpleCommand {
         String[] args = invocation.arguments();
 
         if (!source.hasPermission("mcmetrics.admin")) {
-            source.sendMessage(Component.text("You don't have permission to use this command.").color(NamedTextColor.RED));
+            source.sendMessage(
+                    Component.text("You don't have permission to use this command.").color(NamedTextColor.RED));
             return;
         }
 
@@ -51,7 +52,9 @@ public class MCMetricsCommand implements SimpleCommand {
                 if (args.length == 6) {
                     handlePayment(source, args[1], args[2], args[3], args[4], args[5]);
                 } else {
-                    source.sendMessage(Component.text("Usage: /mcmetricsvelocity payment <platform> <player_uuid> <transaction_id> <amount> <currency>").color(NamedTextColor.RED));
+                    source.sendMessage(Component.text(
+                            "Usage: /mcmetricsvelocity payment <platform> <player_uuid> <transaction_id> <amount> <currency>")
+                            .color(NamedTextColor.RED));
                 }
                 break;
             case "customevent":
@@ -59,7 +62,9 @@ public class MCMetricsCommand implements SimpleCommand {
                     String metadata = String.join(" ", Arrays.copyOfRange(args, 3, args.length));
                     handleCustomEvent(source, args[1], args[2], metadata);
                 } else {
-                    source.sendMessage(Component.text("Usage: /mcmetricsvelocity customevent <player_uuid> <event_type> [key1=value1 key2=value2 ...]").color(NamedTextColor.RED));
+                    source.sendMessage(Component.text(
+                            "Usage: /mcmetricsvelocity customevent <player_uuid> <event_type> [key1=value1 key2=value2 ...]")
+                            .color(NamedTextColor.RED));
                 }
                 break;
             case "reload":
@@ -69,7 +74,8 @@ public class MCMetricsCommand implements SimpleCommand {
                 if (args.length == 3) {
                     handleSetup(source, args[1], args[2]);
                 } else {
-                    source.sendMessage(Component.text("Usage: /mcmetricsvelocity setup <server_id> <server_key>").color(NamedTextColor.RED));
+                    source.sendMessage(Component.text("Usage: /mcmetricsvelocity setup <server_id> <server_key>")
+                            .color(NamedTextColor.RED));
                 }
                 break;
             case "status":
@@ -79,7 +85,8 @@ public class MCMetricsCommand implements SimpleCommand {
                 if (args.length == 2) {
                     handleInfo(source, args[1]);
                 } else {
-                    source.sendMessage(Component.text("Usage: /mcmetricsvelocity info <player>").color(NamedTextColor.RED));
+                    source.sendMessage(
+                            Component.text("Usage: /mcmetricsvelocity info <player>").color(NamedTextColor.RED));
                 }
                 break;
             case "help":
@@ -89,10 +96,13 @@ public class MCMetricsCommand implements SimpleCommand {
         }
     }
 
-    private void handlePayment(CommandSource source, String platform, String playerArg, String transactionId, String amount, String currency) {
+    private void handlePayment(CommandSource source, String platform, String playerArg, String transactionId,
+            String amount, String currency) {
         MCMetricsAPI api = plugin.getApi();
         if (api == null) {
-            source.sendMessage(Component.text("MCMetrics is not properly configured. Please use '/mcmetricsvelocity setup' to configure the plugin.").color(NamedTextColor.RED));
+            source.sendMessage(Component.text(
+                    "MCMetrics is not properly configured. Please use '/mcmetricsvelocity setup' to configure the plugin.")
+                    .color(NamedTextColor.RED));
             return;
         }
 
@@ -110,7 +120,9 @@ public class MCMetricsCommand implements SimpleCommand {
         } catch (IllegalArgumentException e) {
             Optional<Player> player = plugin.getServer().getPlayer(playerArg);
             if (!player.isPresent()) {
-                source.sendMessage(Component.text("Player not found. Note that for offline players, you must use their UUID.").color(NamedTextColor.RED));
+                source.sendMessage(
+                        Component.text("Player not found. Note that for offline players, you must use their UUID.")
+                                .color(NamedTextColor.RED));
                 return;
             }
             playerUuid = player.get().getUniqueId();
@@ -121,7 +133,8 @@ public class MCMetricsCommand implements SimpleCommand {
         try {
             parsedAmount = Double.parseDouble(amount);
         } catch (NumberFormatException e) {
-            source.sendMessage(Component.text("Invalid amount. Please enter a valid number.").color(NamedTextColor.RED));
+            source.sendMessage(
+                    Component.text("Invalid amount. Please enter a valid number.").color(NamedTextColor.RED));
             return;
         }
 
@@ -135,9 +148,13 @@ public class MCMetricsCommand implements SimpleCommand {
         payment.datetime = new Date();
 
         api.insertPayment(payment)
-                .thenRun(() -> source.sendMessage(Component.text("Payment recorded successfully for " + finalPlayerName + ".").color(PRIMARY_COLOR)))
+                .thenRun(() -> source.sendMessage(Component
+                        .text("Payment recorded successfully for " + finalPlayerName + ".").color(PRIMARY_COLOR)))
                 .exceptionally(e -> {
-                    source.sendMessage(Component.text("Failed to record payment. Check console for details.").color(NamedTextColor.RED));
+                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                        source.sendMessage(Component.text("Failed to record payment. Check console for details.")
+                                .color(NamedTextColor.RED));
+                    }
                     return null;
                 });
     }
@@ -145,16 +162,18 @@ public class MCMetricsCommand implements SimpleCommand {
     private void handleCustomEvent(CommandSource source, String playerUuid, String eventType, String metadata) {
         MCMetricsAPI api = plugin.getApi();
         if (api == null) {
-            source.sendMessage(Component.text("MCMetrics is not properly configured. Please use '/mcmetricsvelocity setup' to configure the plugin.").color(NamedTextColor.RED));
+            source.sendMessage(Component.text(
+                    "MCMetrics is not properly configured. Please use '/mcmetricsvelocity setup' to configure the plugin.")
+                    .color(NamedTextColor.RED));
             return;
         }
-    
+
         CustomEvent event = new CustomEvent();
         event.player_uuid = UUID.fromString(playerUuid);
         event.event_type = eventType;
         event.timestamp = new Date();
         event.metadata = new HashMap<>();
-    
+
         String[] keyValuePairs = metadata.split(" ");
         for (String pair : keyValuePairs) {
             String[] keyValue = pair.split("=");
@@ -162,17 +181,20 @@ public class MCMetricsCommand implements SimpleCommand {
                 event.metadata.put(keyValue[0], keyValue[1]);
             }
         }
-    
+
         api.insertCustomEvent(event)
                 .thenRun(() -> {
                     source.sendMessage(Component.text("Custom event recorded successfully.").color(PRIMARY_COLOR));
-                    if (!source.equals(plugin.getServer().getConsoleCommandSource()) || 
-                        plugin.getConfigManager().getBoolean("main", "debug")) {
+                    if (!source.equals(plugin.getServer().getConsoleCommandSource()) ||
+                            plugin.getConfigManager().getBoolean("main", "debug")) {
                         plugin.getLogger().info("Custom event recorded: " + event.event_type);
                     }
                 })
                 .exceptionally(e -> {
-                    source.sendMessage(Component.text("Failed to record custom event. Check console for details.").color(NamedTextColor.RED));
+                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                        source.sendMessage(Component.text("Failed to record custom event. Check console for details.")
+                                .color(NamedTextColor.RED));
+                    }
                     return null;
                 });
     }
@@ -190,7 +212,8 @@ public class MCMetricsCommand implements SimpleCommand {
             plugin.reloadPlugin();
             source.sendMessage(Component.text("MCMetrics configuration updated and reloaded.").color(PRIMARY_COLOR));
         } catch (IOException e) {
-            source.sendMessage(Component.text("Failed to update configuration. Check console for details.").color(NamedTextColor.RED));
+            source.sendMessage(Component.text("Failed to update configuration. Check console for details.")
+                    .color(NamedTextColor.RED));
             plugin.getLogger().severe("Failed to update configuration: " + e.getMessage());
         }
     }
@@ -198,17 +221,23 @@ public class MCMetricsCommand implements SimpleCommand {
     private void handleStatus(CommandSource source) {
         MCMetricsAPI api = plugin.getApi();
         if (api == null) {
-            source.sendMessage(Component.text("MCMetrics is not properly configured. Please use '/mcmetricsvelocity setup' to configure the plugin.").color(NamedTextColor.RED));
+            source.sendMessage(Component.text(
+                    "MCMetrics is not properly configured. Please use '/mcmetricsvelocity setup' to configure the plugin.")
+                    .color(NamedTextColor.RED));
             return;
         }
 
         String version = plugin.getClass().getPackage().getImplementationVersion();
 
         source.sendMessage(Component.text("MCMetrics Status").color(PRIMARY_COLOR).decorate(TextDecoration.BOLD));
-        source.sendMessage(Component.text("Plugin version: ").color(NamedTextColor.GRAY).append(Component.text(version != null ? version : "unknown").color(NamedTextColor.WHITE)));
-        source.sendMessage(Component.text("Active sessions: ").color(NamedTextColor.GRAY).append(Component.text(plugin.getActiveSessionCount()).color(NamedTextColor.WHITE)));
-        source.sendMessage(Component.text("API requests in the last hour: ").color(NamedTextColor.GRAY).append(Component.text(api.getRequestCount()).color(NamedTextColor.WHITE)));
-        source.sendMessage(Component.text("API errors in the last hour: ").color(NamedTextColor.GRAY).append(Component.text(api.getErrorCount()).color(NamedTextColor.WHITE)));
+        source.sendMessage(Component.text("Plugin version: ").color(NamedTextColor.GRAY)
+                .append(Component.text(version != null ? version : "unknown").color(NamedTextColor.WHITE)));
+        source.sendMessage(Component.text("Active sessions: ").color(NamedTextColor.GRAY)
+                .append(Component.text(plugin.getActiveSessionCount()).color(NamedTextColor.WHITE)));
+        source.sendMessage(Component.text("API requests in the last hour: ").color(NamedTextColor.GRAY)
+                .append(Component.text(api.getRequestCount()).color(NamedTextColor.WHITE)));
+        source.sendMessage(Component.text("API errors in the last hour: ").color(NamedTextColor.GRAY)
+                .append(Component.text(api.getErrorCount()).color(NamedTextColor.WHITE)));
     }
 
     private void handleInfo(CommandSource source, String playerName) {
@@ -229,32 +258,51 @@ public class MCMetricsCommand implements SimpleCommand {
         }
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        source.sendMessage(Component.text("Player Info: ").color(PRIMARY_COLOR).decorate(TextDecoration.BOLD).append(Component.text(target.getUsername()).color(NamedTextColor.WHITE)));
-        source.sendMessage(Component.text("UUID: ").color(NamedTextColor.GRAY).append(Component.text(playerId.toString()).color(NamedTextColor.WHITE)));
-        source.sendMessage(Component.text("Session start: ").color(NamedTextColor.GRAY).append(Component.text(sdf.format(session.session_start)).color(NamedTextColor.WHITE)));
-        source.sendMessage(Component.text("Domain: ").color(NamedTextColor.GRAY).append(Component.text(session.domain).color(NamedTextColor.WHITE)));
-        source.sendMessage(Component.text("IP Address: ").color(NamedTextColor.GRAY).append(Component.text(session.ip_address).color(NamedTextColor.WHITE)));
+        source.sendMessage(Component.text("Player Info: ").color(PRIMARY_COLOR).decorate(TextDecoration.BOLD)
+                .append(Component.text(target.getUsername()).color(NamedTextColor.WHITE)));
+        source.sendMessage(Component.text("UUID: ").color(NamedTextColor.GRAY)
+                .append(Component.text(playerId.toString()).color(NamedTextColor.WHITE)));
+        source.sendMessage(Component.text("Session start: ").color(NamedTextColor.GRAY)
+                .append(Component.text(sdf.format(session.session_start)).color(NamedTextColor.WHITE)));
+        source.sendMessage(Component.text("Domain: ").color(NamedTextColor.GRAY)
+                .append(Component.text(session.domain).color(NamedTextColor.WHITE)));
+        source.sendMessage(Component.text("IP Address: ").color(NamedTextColor.GRAY)
+                .append(Component.text(session.ip_address).color(NamedTextColor.WHITE)));
 
         Map<String, Integer> groupedEvents = sessionManager.getGroupedCustomEvents(playerId);
         source.sendMessage(Component.text("Custom events this session:").color(NamedTextColor.GRAY));
         for (Map.Entry<String, Integer> entry : groupedEvents.entrySet()) {
-            source.sendMessage(Component.text("  " + entry.getKey() + ": ").color(NamedTextColor.WHITE).append(Component.text(entry.getValue() + " times").color(NamedTextColor.GRAY)));
+            source.sendMessage(Component.text("  " + entry.getKey() + ": ").color(NamedTextColor.WHITE)
+                    .append(Component.text(entry.getValue() + " times").color(NamedTextColor.GRAY)));
         }
 
         source.sendMessage(Component.text("Payments this session:").color(NamedTextColor.GRAY));
         for (Payment payment : sessionManager.getSessionPayments(playerId)) {
-            source.sendMessage(Component.text("  " + payment.amount + " " + payment.currency + " ").color(NamedTextColor.WHITE).append(Component.text("(" + payment.platform + ")").color(NamedTextColor.GRAY)));
+            source.sendMessage(
+                    Component.text("  " + payment.amount + " " + payment.currency + " ").color(NamedTextColor.WHITE)
+                            .append(Component.text("(" + payment.platform + ")").color(NamedTextColor.GRAY)));
         }
     }
 
     private void sendHelpMessage(CommandSource source) {
-        source.sendMessage(Component.text("MCMetrics Commands ").color(PRIMARY_COLOR).decorate(TextDecoration.BOLD).append(Component.text("(v" + plugin.getClass().getPackage().getImplementationVersion() + ")").color(NamedTextColor.GRAY)));
-        source.sendMessage(Component.text("/mcmetricsvelocity help").color(PRIMARY_COLOR).append(Component.text(" - Show this help message").color(NamedTextColor.GRAY)));
-        source.sendMessage(Component.text("/mcmetricsvelocity setup <server_id> <server_key>").color(PRIMARY_COLOR).append(Component.text(" - Configure the plugin").color(NamedTextColor.GRAY)));
-        source.sendMessage(Component.text("/mcmetricsvelocity reload").color(PRIMARY_COLOR).append(Component.text(" - Reload the configuration").color(NamedTextColor.GRAY)));
-        source.sendMessage(Component.text("/mcmetricsvelocity status").color(PRIMARY_COLOR).append(Component.text(" - Show plugin status").color(NamedTextColor.GRAY)));
-        source.sendMessage(Component.text("/mcmetricsvelocity info <player name or uuid>").color(PRIMARY_COLOR).append(Component.text(" - Show player information").color(NamedTextColor.GRAY)));
-        source.sendMessage(Component.text("/mcmetricsvelocity payment <platform> <player_uuid> <transaction_id> <amount> <currency>").color(PRIMARY_COLOR).append(Component.text(" - Record a payment").color(NamedTextColor.GRAY)));
-        source.sendMessage(Component.text("/mcmetricsvelocity customevent <player_uuid> <event_type> [key1=value1 key2=value2 ...]").color(PRIMARY_COLOR).append(Component.text(" - Record a custom event").color(NamedTextColor.GRAY)));
+        source.sendMessage(Component.text("MCMetrics Commands ").color(PRIMARY_COLOR).decorate(TextDecoration.BOLD)
+                .append(Component.text("(v" + plugin.getClass().getPackage().getImplementationVersion() + ")")
+                        .color(NamedTextColor.GRAY)));
+        source.sendMessage(Component.text("/mcmetricsvelocity help").color(PRIMARY_COLOR)
+                .append(Component.text(" - Show this help message").color(NamedTextColor.GRAY)));
+        source.sendMessage(Component.text("/mcmetricsvelocity setup <server_id> <server_key>").color(PRIMARY_COLOR)
+                .append(Component.text(" - Configure the plugin").color(NamedTextColor.GRAY)));
+        source.sendMessage(Component.text("/mcmetricsvelocity reload").color(PRIMARY_COLOR)
+                .append(Component.text(" - Reload the configuration").color(NamedTextColor.GRAY)));
+        source.sendMessage(Component.text("/mcmetricsvelocity status").color(PRIMARY_COLOR)
+                .append(Component.text(" - Show plugin status").color(NamedTextColor.GRAY)));
+        source.sendMessage(Component.text("/mcmetricsvelocity info <player name or uuid>").color(PRIMARY_COLOR)
+                .append(Component.text(" - Show player information").color(NamedTextColor.GRAY)));
+        source.sendMessage(Component
+                .text("/mcmetricsvelocity payment <platform> <player_uuid> <transaction_id> <amount> <currency>")
+                .color(PRIMARY_COLOR).append(Component.text(" - Record a payment").color(NamedTextColor.GRAY)));
+        source.sendMessage(Component
+                .text("/mcmetricsvelocity customevent <player_uuid> <event_type> [key1=value1 key2=value2 ...]")
+                .color(PRIMARY_COLOR).append(Component.text(" - Record a custom event").color(NamedTextColor.GRAY)));
     }
 }

@@ -120,7 +120,11 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
                         .count();
                 ping.java_player_count = ping.player_count - ping.bedrock_player_count;
 
-                api.insertServerPing(ping).thenRun(() -> getLogger().info("Server ping recorded successfully."));
+                api.insertServerPing(ping).thenRun(() -> {
+                    if (configManager.getBoolean("main", "debug")) {
+                        getLogger().info("Server ping recorded successfully.");
+                    }
+                });
             }
         }.runTaskTimerAsynchronously(this, 0L, 60L * 10); // Run every 60 seconds
     }

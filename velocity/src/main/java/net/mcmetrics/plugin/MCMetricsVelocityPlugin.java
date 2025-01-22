@@ -119,7 +119,11 @@ public class MCMetricsVelocityPlugin {
 
         ping.bedrock_player_count = bedrockCount;
         ping.java_player_count = ping.player_count - bedrockCount;
-        api.insertServerPing(ping).thenRun(() -> logger.info("Server ping recorded successfully."));
+        api.insertServerPing(ping).thenRun(() -> {
+            if (configManager.getBoolean("main", "debug")) {
+                logger.info("Server ping recorded successfully.");
+            }
+        });
     }
 
     public MCMetricsAPI getApi() {

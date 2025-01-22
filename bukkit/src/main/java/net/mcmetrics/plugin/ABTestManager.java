@@ -36,14 +36,14 @@ public class ABTestManager {
         }
 
         api.getABTests()
-            .thenAccept(tests -> {
-                activeTests = tests;
-                logger.info("Successfully fetched " + tests.size() + " A/B tests");
-            })
-            .exceptionally(e -> {
-                logger.severe("Failed to fetch A/B tests: " + e.getMessage());
-                return null;
-            });
+                .thenAccept(tests -> {
+                    activeTests = tests;
+                    logger.info("Successfully fetched " + tests.size() + " A/B tests");
+                })
+                .exceptionally(e -> {
+                    logger.severe("Failed to fetch A/B tests: " + e.getMessage());
+                    return null;
+                });
     }
 
     public List<ABTest> getActiveTests() {
@@ -53,8 +53,8 @@ public class ABTestManager {
     public void handleJoinTrigger(Player player, boolean isFirstJoin) {
         TriggerType triggerType = isFirstJoin ? TriggerType.FirstJoin : TriggerType.Join;
         List<ABTest> relevantTests = activeTests.stream()
-            .filter(test -> test.trigger == triggerType)
-            .collect(Collectors.toList());
+                .filter(test -> test.trigger == triggerType)
+                .collect(Collectors.toList());
 
         for (ABTest test : relevantTests) {
             ABTestVariant variant = selectVariant(test, player.getUniqueId());
@@ -64,8 +64,8 @@ public class ABTestManager {
 
     public void handlePurchaseTrigger(Player player) {
         List<ABTest> relevantTests = activeTests.stream()
-            .filter(test -> test.trigger == TriggerType.Purchase)
-            .collect(Collectors.toList());
+                .filter(test -> test.trigger == TriggerType.Purchase)
+                .collect(Collectors.toList());
 
         for (ABTest test : relevantTests) {
             ABTestVariant variant = selectVariant(test, player.getUniqueId());
@@ -98,11 +98,11 @@ public class ABTestManager {
 
         // Use the hash to create a seeded random number generator
         Random random = new Random(hash);
-        
+
         // Calculate total probability (weight) of all variants
         int totalWeight = test.variants.stream()
-            .mapToInt(v -> v.weight)
-            .sum();
+                .mapToInt(v -> v.weight)
+                .sum();
 
         // Generate a random number between 0 and totalWeight
         int roll = random.nextInt(totalWeight);
@@ -135,7 +135,9 @@ public class ABTestManager {
             }
             session.ab_test_exposures.add(exposure);
         } else {
-            logger.warning("Failed to record A/B test exposure: session not found for player " + player.getName());
+            if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                logger.warning("Failed to record A/B test exposure: session not found for player " + player.getName());
+            }
         }
 
         // Skip execution for control variants
@@ -145,20 +147,18 @@ public class ABTestManager {
 
         // Replace placeholders in payload
         String payload = variant.payload
-            .replace("${player}", player.getName())
-            .replace("${uuid}", player.getUniqueId().toString())
-            .replace("${variant}", variant.name)
-            .replace("${experimentName}", test.name);
+                .replace("${player}", player.getName())
+                .replace("${uuid}", player.getUniqueId().toString())
+                .replace("${variant}", variant.name)
+                .replace("${experimentName}", test.name);
 
         switch (variant.action) {
             case ConsoleCommand:
-                Bukkit.getScheduler().runTask(plugin, () -> 
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), payload));
+                Bukkit.getScheduler().runTask(plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), payload));
                 break;
 
             case PlayerCommand:
-                Bukkit.getScheduler().runTask(plugin, () -> 
-                    player.performCommand(payload));
+                Bukkit.getScheduler().runTask(plugin, () -> player.performCommand(payload));
                 break;
 
             case PlayerMessage:

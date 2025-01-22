@@ -178,8 +178,11 @@ public class ConsoleEventListener implements Listener {
                                         }
                                     })
                                     .exceptionally(e -> {
-                                        plugin.getLogger().warning(
-                                                "Failed to record console-triggered custom event: " + e.getMessage());
+                                        if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                                            plugin.getLogger().warning(
+                                                    "Failed to record console-triggered custom event: "
+                                                            + e.getMessage());
+                                        }
                                         return null;
                                     });
                         }

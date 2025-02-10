@@ -1,8 +1,8 @@
 name: MCMetrics
-version: '${version}'
+version: "${version}"
 main: net.mcmetrics.plugin.MCMetricsSpigotPlugin
-api-version: '1.13'
-"folia-supported: true"
+api-version: "1.13"
+folia-supported: true
 commands:
   mcmetrics:
     description: MCMetrics admin commands

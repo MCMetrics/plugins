@@ -154,11 +154,11 @@ public class ABTestManager {
 
         switch (variant.action) {
             case ConsoleCommand:
-                Bukkit.getScheduler().runTask(plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), payload));
+                plugin.getSchedulerAdapter().runTask(() -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), payload));
                 break;
 
             case PlayerCommand:
-                Bukkit.getScheduler().runTask(plugin, () -> player.performCommand(payload));
+                plugin.getSchedulerAdapter().runTask(() -> player.performCommand(payload));
                 break;
 
             case PlayerMessage:

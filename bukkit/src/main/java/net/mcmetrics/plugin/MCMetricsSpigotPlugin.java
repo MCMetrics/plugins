@@ -2,13 +2,13 @@ package net.mcmetrics.plugin;
 
 import net.mcmetrics.plugin.commands.MCMetricsCommand;
 import net.mcmetrics.plugin.listeners.*;
+import net.mcmetrics.plugin.scheduler.SchedulerAdapter;
 import net.mcmetrics.shared.MCMetricsAPI;
 import net.mcmetrics.shared.config.ConfigManager;
 import net.mcmetrics.shared.models.ServerPing;
 import net.mcmetrics.shared.models.Session;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.IOException;
 import java.util.Date;
@@ -22,9 +22,14 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
     private LegacyPlayerManager legacyPlayerManager;
     private ABTestManager abTestManager;
     private ConsoleEventListener consoleEventListener;
+    private SchedulerAdapter schedulerAdapter;
+    private Object serverPingTask;
 
     @Override
     public void onEnable() {
+        // Initialize scheduler adapter
+        schedulerAdapter = SchedulerAdapter.create(this);
+        
         configManager = new ConfigManager();
         try {
             configManager.loadConfig("main", getDataFolder(), "config.yml",
@@ -82,6 +87,12 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // Cancel any scheduled tasks
+        if (serverPingTask != null) {
+            schedulerAdapter.cancelTask(serverPingTask);
+            serverPingTask = null;
+        }
+        
         if (sessionManager != null) {
             List<Session> remainingSessions = sessionManager.endAllSessions();
             getLogger().info("Ending " + remainingSessions.size() + " remaining sessions...");
@@ -102,31 +113,31 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
     }
 
     private void startServerPingTask() {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (api == null) {
-                    getLogger().warning(
-                            "MCMetrics API is not initialized. Please use /mcmetrics setup to configure the plugin.");
-                    return;
-                }
-
-                ServerPing ping = new ServerPing();
-                ping.time = new Date();
-                ping.player_count = getServer().getOnlinePlayers().size();
-                ping.bedrock_player_count = (int) getServer().getOnlinePlayers().stream()
-                        .map(player -> player.getUniqueId().toString())
-                        .filter(uuid -> uuid.startsWith("00000000-0000-0000"))
-                        .count();
-                ping.java_player_count = ping.player_count - ping.bedrock_player_count;
-
-                api.insertServerPing(ping).thenRun(() -> {
-                    if (configManager.getBoolean("main", "debug")) {
-                        getLogger().info("Server ping recorded successfully.");
-                    }
-                });
+        Runnable pingTask = () -> {
+            if (api == null) {
+                getLogger().warning(
+                        "MCMetrics API is not initialized. Please use /mcmetrics setup to configure the plugin.");
+                return;
             }
-        }.runTaskTimerAsynchronously(this, 0L, 60L * 10); // Run every 60 seconds
+
+            ServerPing ping = new ServerPing();
+            ping.time = new Date();
+            ping.player_count = getServer().getOnlinePlayers().size();
+            ping.bedrock_player_count = (int) getServer().getOnlinePlayers().stream()
+                    .map(player -> player.getUniqueId().toString())
+                    .filter(uuid -> uuid.startsWith("00000000-0000-0000"))
+                    .count();
+            ping.java_player_count = ping.player_count - ping.bedrock_player_count;
+
+            api.insertServerPing(ping).thenRun(() -> {
+                if (configManager.getBoolean("main", "debug")) {
+                    getLogger().info("Server ping recorded successfully.");
+                }
+            });
+        };
+        
+        // Schedule the server ping task using our adapter
+        serverPingTask = schedulerAdapter.runTaskTimerAsynchronously(pingTask, 0L, 60L * 10); // Run every 10 minutes (600 ticks)
     }
 
     public MCMetricsAPI getApi() {
@@ -151,6 +162,10 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
 
     public ConsoleEventListener getConsoleEventListener() {
         return consoleEventListener;
+    }
+
+    public SchedulerAdapter getSchedulerAdapter() {
+        return schedulerAdapter;
     }
 
     public void reloadPlugin() {

@@ -10,7 +10,6 @@ import org.apache.logging.log4j.core.config.Property;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -44,7 +43,7 @@ public class ConsoleEventListener implements Listener {
         public void append(LogEvent event) {
             String message = event.getMessage().getFormattedMessage();
             // Process on the main thread to avoid concurrent modification issues
-            Bukkit.getScheduler().runTask(plugin, () -> processConsoleMessage(message));
+            plugin.getSchedulerAdapter().runTask(() -> processConsoleMessage(message));
         }
     }
 
@@ -158,36 +157,33 @@ public class ConsoleEventListener implements Listener {
 
                 final String finalPlayerIdentifier = playerIdentifier;
 
-                // fire the event asynchronously
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        UUID playerUuid = resolvePlayerIdentifier(finalPlayerIdentifier);
-                        if (playerUuid != null) {
-                            CustomEvent customEvent = new CustomEvent();
-                            customEvent.player_uuid = playerUuid;
-                            customEvent.event_type = config.eventName;
-                            customEvent.timestamp = new Date();
-                            customEvent.metadata = metadata;
+                // fire the event asynchronously using the scheduler adapter
+                plugin.getSchedulerAdapter().runTaskAsynchronously(() -> {
+                    UUID playerUuid = resolvePlayerIdentifier(finalPlayerIdentifier);
+                    if (playerUuid != null) {
+                        CustomEvent customEvent = new CustomEvent();
+                        customEvent.player_uuid = playerUuid;
+                        customEvent.event_type = config.eventName;
+                        customEvent.timestamp = new Date();
+                        customEvent.metadata = metadata;
 
-                            plugin.getApi().insertCustomEvent(customEvent)
-                                    .thenRun(() -> {
-                                        if (plugin.getConfigManager().getBoolean("main", "debug")) {
-                                            plugin.getLogger().info(
-                                                    "Console-triggered custom event recorded: " + config.eventName);
-                                        }
-                                    })
-                                    .exceptionally(e -> {
-                                        if (plugin.getConfigManager().getBoolean("main", "debug")) {
-                                            plugin.getLogger().warning(
-                                                    "Failed to record console-triggered custom event: "
-                                                            + e.getMessage());
-                                        }
-                                        return null;
-                                    });
-                        }
+                        plugin.getApi().insertCustomEvent(customEvent)
+                                .thenRun(() -> {
+                                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                                        plugin.getLogger().info(
+                                                "Console-triggered custom event recorded: " + config.eventName);
+                                    }
+                                })
+                                .exceptionally(e -> {
+                                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                                        plugin.getLogger().warning(
+                                                "Failed to record console-triggered custom event: "
+                                                        + e.getMessage());
+                                    }
+                                    return null;
+                                });
                     }
-                }.runTaskAsynchronously(plugin);
+                });
                 return true;
             }
         }

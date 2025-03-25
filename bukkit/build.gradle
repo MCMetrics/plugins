@@ -3,6 +3,7 @@ version = rootProject.version
 
 repositories {
     maven { url = 'https://repo.extendedclip.com/content/repositories/placeholderapi/' }
+    maven { url = 'https://jitpack.io' }
 }
 
 dependencies {
@@ -11,9 +12,13 @@ dependencies {
     compileOnly 'me.clip:placeholderapi:2.11.6'
     implementation 'org.apache.logging.log4j:log4j-core:2.17.1'
     implementation 'org.apache.logging.log4j:log4j-api:2.17.1'
+    implementation 'com.github.technicallycoded:FoliaLib:main-SNAPSHOT'
 }
 
 shadowJar {
     configurations = [project.configurations.runtimeClasspath]
-    minimize()
+    relocate "com.tcoded.folialib", "${project.group}.mcmetrics.lib.folialib"
+    minimize {
+        exclude(dependency("com.github.technicallycoded:FoliaLib:.*"))
+    }
 }

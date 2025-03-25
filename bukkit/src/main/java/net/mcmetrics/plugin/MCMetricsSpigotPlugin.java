@@ -1,5 +1,6 @@
 package net.mcmetrics.plugin;
 
+import com.tcoded.folialib.FoliaLib;
 import net.mcmetrics.plugin.commands.MCMetricsCommand;
 import net.mcmetrics.plugin.listeners.*;
 import net.mcmetrics.shared.MCMetricsAPI;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class MCMetricsSpigotPlugin extends JavaPlugin {
     private MCMetricsAPI api;
@@ -22,9 +24,13 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
     private LegacyPlayerManager legacyPlayerManager;
     private ABTestManager abTestManager;
     private ConsoleEventListener consoleEventListener;
+    private FoliaLib foliaLib;
 
     @Override
     public void onEnable() {
+        // Initialize FoliaLib
+        foliaLib = new FoliaLib(this);
+        
         configManager = new ConfigManager();
         try {
             configManager.loadConfig("main", getDataFolder(), "config.yml",
@@ -46,8 +52,14 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ABTestListener(this), this);
         getServer().getPluginManager().registerEvents(new ChatMessageListener(this), this);
 
-        consoleEventListener = new ConsoleEventListener(this);
-        getServer().getPluginManager().registerEvents(consoleEventListener, this);
+        // Only setup console event listener on non-Folia servers
+        if (!foliaLib.isFolia()) {
+            consoleEventListener = new ConsoleEventListener(this);
+            getServer().getPluginManager().registerEvents(consoleEventListener, this);
+            getLogger().info("Initialized console event listener");
+        } else {
+            getLogger().info("Console event listener disabled on Folia server");
+        }
 
         // commands
         getCommand("mcmetrics").setExecutor(new MCMetricsCommand(this));
@@ -82,6 +94,11 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // Cancel all tasks registered with FoliaLib
+        if (foliaLib != null) {
+            foliaLib.getScheduler().cancelAllTasks();
+        }
+        
         if (sessionManager != null) {
             List<Session> remainingSessions = sessionManager.endAllSessions();
             getLogger().info("Ending " + remainingSessions.size() + " remaining sessions...");
@@ -93,6 +110,7 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
 
         if (consoleEventListener != null) {
             consoleEventListener.shutdown();
+            getLogger().info("Console event listener shut down");
         }
 
         if (api != null) {
@@ -102,31 +120,29 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
     }
 
     private void startServerPingTask() {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (api == null) {
-                    getLogger().warning(
-                            "MCMetrics API is not initialized. Please use /mcmetrics setup to configure the plugin.");
-                    return;
-                }
-
-                ServerPing ping = new ServerPing();
-                ping.time = new Date();
-                ping.player_count = getServer().getOnlinePlayers().size();
-                ping.bedrock_player_count = (int) getServer().getOnlinePlayers().stream()
-                        .map(player -> player.getUniqueId().toString())
-                        .filter(uuid -> uuid.startsWith("00000000-0000-0000"))
-                        .count();
-                ping.java_player_count = ping.player_count - ping.bedrock_player_count;
-
-                api.insertServerPing(ping).thenRun(() -> {
-                    if (configManager.getBoolean("main", "debug")) {
-                        getLogger().info("Server ping recorded successfully.");
-                    }
-                });
+        // Using FoliaLib instead of BukkitRunnable
+        foliaLib.getScheduler().runTimerAsync(() -> {
+            if (api == null) {
+                getLogger().warning(
+                        "MCMetrics API is not initialized. Please use /mcmetrics setup to configure the plugin.");
+                return;
             }
-        }.runTaskTimerAsynchronously(this, 0L, 60L * 10); // Run every 60 seconds
+
+            ServerPing ping = new ServerPing();
+            ping.time = new Date();
+            ping.player_count = getServer().getOnlinePlayers().size();
+            ping.bedrock_player_count = (int) getServer().getOnlinePlayers().stream()
+                    .map(player -> player.getUniqueId().toString())
+                    .filter(uuid -> uuid.startsWith("00000000-0000-0000"))
+                    .count();
+            ping.java_player_count = ping.player_count - ping.bedrock_player_count;
+
+            api.insertServerPing(ping).thenRun(() -> {
+                if (configManager.getBoolean("main", "debug")) {
+                    getLogger().info("Server ping recorded successfully.");
+                }
+            });
+        }, 0, 10 * 20); // Run every 10 seconds (200 ticks)
     }
 
     public MCMetricsAPI getApi() {
@@ -151,6 +167,10 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
 
     public ConsoleEventListener getConsoleEventListener() {
         return consoleEventListener;
+    }
+    
+    public FoliaLib getFoliaLib() {
+        return foliaLib;
     }
 
     public void reloadPlugin() {

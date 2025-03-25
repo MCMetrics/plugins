@@ -14,3 +14,15 @@ publishing {
         }
     }
 }
+
+// Create mcmetrics-api JAR without dependencies
+jar {
+    archiveBaseName.set('mcmetrics-api')
+    archiveClassifier.set('')
+}
+
+// Override the shadowJar task to create an API JAR with dependencies if needed
+shadowJar {
+    archiveBaseName.set('mcmetrics-api')
+    archiveClassifier.set('all')
+}

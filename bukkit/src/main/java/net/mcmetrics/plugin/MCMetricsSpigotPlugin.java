@@ -52,13 +52,17 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ABTestListener(this), this);
         getServer().getPluginManager().registerEvents(new ChatMessageListener(this), this);
 
-        // Only setup console event listener on non-Folia servers
-        if (!foliaLib.isFolia()) {
+        // Only setup console event listener on non-Folia servers and if not disabled in config
+        if (!foliaLib.isFolia() && !configManager.getBoolean("main", "disable-console-listener")) {
             consoleEventListener = new ConsoleEventListener(this);
             getServer().getPluginManager().registerEvents(consoleEventListener, this);
             getLogger().info("Initialized console event listener");
         } else {
-            getLogger().info("Console event listener disabled on Folia server");
+            if (foliaLib.isFolia()) {
+                getLogger().info("Console event listener disabled on Folia server");
+            } else {
+                getLogger().info("Console event listener disabled by configuration");
+            }
         }
 
         // commands

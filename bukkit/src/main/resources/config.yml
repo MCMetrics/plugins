@@ -23,5 +23,8 @@ exempt:
 # Debug mode - enables additional logging
 debug: false
 
+# Disable console event listener - set to true to disable console event tracking completely
+disable-console-listener: false
+
 # Don't change this value
 config-version: 3

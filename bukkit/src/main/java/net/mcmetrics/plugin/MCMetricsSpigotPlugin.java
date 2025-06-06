@@ -30,7 +30,7 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
     public void onEnable() {
         // Initialize FoliaLib
         foliaLib = new FoliaLib(this);
-        
+
         configManager = new ConfigManager();
         try {
             configManager.loadConfig("main", getDataFolder(), "config.yml",
@@ -52,7 +52,8 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ABTestListener(this), this);
         getServer().getPluginManager().registerEvents(new ChatMessageListener(this), this);
 
-        // Only setup console event listener on non-Folia servers and if not disabled in config
+        // Only setup console event listener on non-Folia servers and if not disabled in
+        // config
         if (!foliaLib.isFolia() && !configManager.getBoolean("main", "disable-console-listener")) {
             consoleEventListener = new ConsoleEventListener(this);
             getServer().getPluginManager().registerEvents(consoleEventListener, this);
@@ -102,13 +103,28 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         if (foliaLib != null) {
             foliaLib.getScheduler().cancelAllTasks();
         }
-        
+
         if (sessionManager != null) {
             List<Session> remainingSessions = sessionManager.endAllSessions();
-            getLogger().info("Ending " + remainingSessions.size() + " remaining sessions...");
-            for (Session session : remainingSessions) {
-                session.session_end = new Date();
-                api.insertSession(session).join(); // Wait for each session to be inserted
+            if (!remainingSessions.isEmpty()) {
+                getLogger().info("Ending " + remainingSessions.size() + " remaining sessions...");
+
+                // Set end time for all sessions
+                Date endTime = new Date();
+                for (Session session : remainingSessions) {
+                    session.session_end = endTime;
+                }
+
+                // Upload sessions asynchronously in batches
+                if (api != null) {
+                    try {
+                        api.insertSessionsBatch(remainingSessions, 5, 20) // 5 sessions per batch, 20 second timeout
+                                .get(25, TimeUnit.SECONDS); // Wait up to 25 seconds for all uploads to complete
+                        getLogger().info("Successfully uploaded all remaining sessions during shutdown");
+                    } catch (Exception e) {
+                        getLogger().warning("Failed to upload some sessions during shutdown: " + e.getMessage());
+                    }
+                }
             }
         }
 
@@ -172,7 +188,7 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
     public ConsoleEventListener getConsoleEventListener() {
         return consoleEventListener;
     }
-    
+
     public FoliaLib getFoliaLib() {
         return foliaLib;
     }

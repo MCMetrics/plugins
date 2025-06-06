@@ -12,6 +12,7 @@ import net.mcmetrics.plugin.listeners.PlayerSessionListener;
 import net.mcmetrics.shared.MCMetricsAPI;
 import net.mcmetrics.shared.config.ConfigManager;
 import net.mcmetrics.shared.models.ServerPing;
+import net.mcmetrics.shared.models.Session;
 
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.SimpleCommand;
@@ -20,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -69,10 +71,25 @@ public class MCMetricsVelocityPlugin {
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
         if (sessionManager != null) {
-            sessionManager.endAllSessions().forEach(session -> {
-                session.session_end = new Date();
-                api.insertSession(session).join(); // Wait for each session to be inserted
-            });
+            List<Session> remainingSessions = sessionManager.endAllSessions();
+            if (!remainingSessions.isEmpty()) {
+                logger.info("Ending " + remainingSessions.size() + " remaining sessions...");
+
+                // Set end time for all sessions
+                Date endTime = new Date();
+                remainingSessions.forEach(session -> session.session_end = endTime);
+
+                // Upload sessions asynchronously in batches
+                if (api != null) {
+                    try {
+                        api.insertSessionsBatch(remainingSessions, 5, 20) // 5 sessions per batch, 20 second timeout
+                                .get(25, TimeUnit.SECONDS); // Wait up to 25 seconds for all uploads to complete
+                        logger.info("Successfully uploaded all remaining sessions during shutdown");
+                    } catch (Exception e) {
+                        logger.warning("Failed to upload some sessions during shutdown: " + e.getMessage());
+                    }
+                }
+            }
         }
 
         if (api != null) {

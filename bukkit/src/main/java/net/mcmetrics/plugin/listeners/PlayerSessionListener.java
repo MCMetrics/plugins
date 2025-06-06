@@ -34,7 +34,8 @@ public class PlayerSessionListener implements Listener {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        if (isExempt(player)) return;
+        if (isExempt(player))
+            return;
 
         Session session = new Session();
         session.player_uuid = playerId;
@@ -51,7 +52,8 @@ public class PlayerSessionListener implements Listener {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        if (isExempt(player)) return;
+        if (isExempt(player))
+            return;
 
         Session session = sessionManager.getSession(playerId);
         if (session == null) {
@@ -59,10 +61,12 @@ public class PlayerSessionListener implements Listener {
             return;
         }
 
-        // Check for potential legacy players during join event when hasPlayedBefore() is reliable
+        // Check for potential legacy players during join event when hasPlayedBefore()
+        // is reliable
         if (player.hasPlayedBefore() && !plugin.getLegacyPlayerManager().isKnownPlayer(playerId)) {
             session.potential_legacy = true;
-            // plugin.getLogger().info("Marked player " + player.getName() + " as potential legacy player");
+            // plugin.getLogger().info("Marked player " + player.getName() + " as potential
+            // legacy player");
         }
     }
 
@@ -71,7 +75,8 @@ public class PlayerSessionListener implements Listener {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        if (isExempt(player)) return;
+        if (isExempt(player))
+            return;
 
         Session session = sessionManager.endSession(playerId);
         if (session == null) {
@@ -82,25 +87,29 @@ public class PlayerSessionListener implements Listener {
         session.session_end = new Date();
 
         plugin.getApi().insertSession(session)
-            .thenAccept(v -> {
-                plugin.getLogger().info("Session uploaded for player: " + playerId);
-                // Only add to known players if this was a potential legacy player and upload succeeded
-                if (session.potential_legacy) {
-                    plugin.getLegacyPlayerManager().addKnownPlayer(playerId);
-                    // plugin.getLogger().info("Added " + player.getName() + " to known players list after successful session upload");
-                }
-            })
-            .exceptionally(e -> {
-                plugin.getLogger().severe("Failed to upload session for player " + playerId + ": " + e.getMessage());
-                return null;
-            });
+                .thenAccept(v -> {
+                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                        plugin.getLogger().info("Session uploaded for player: " + playerId);
+                    }
+                    // Only add to known players if this was a potential legacy player and upload
+                    // succeeded
+                    if (session.potential_legacy) {
+                        plugin.getLegacyPlayerManager().addKnownPlayer(playerId);
+                        // plugin.getLogger().info("Added " + player.getName() + " to known players list
+                        // after successful session upload");
+                    }
+                })
+                .exceptionally(e -> {
+                    // Use rate-limited logging for session upload errors
+                    plugin.getApi().logErrorWithRateLimit("SESSION_UPLOAD_ERROR",
+                            "Failed to upload session for player " + playerId + ": " + e.getMessage());
+                    return null;
+                });
     }
 
     private boolean isExempt(Player player) {
         List<?> exemptPlayers = plugin.getConfigManager().getList("main", "exempt.players");
-        return exemptPlayers != null && (
-            exemptPlayers.contains(player.getName()) ||
-            exemptPlayers.contains(player.getUniqueId().toString())
-        );
+        return exemptPlayers != null && (exemptPlayers.contains(player.getName()) ||
+                exemptPlayers.contains(player.getUniqueId().toString()));
     }
 }

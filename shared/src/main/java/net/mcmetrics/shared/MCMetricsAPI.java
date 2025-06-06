@@ -100,6 +100,15 @@ public class MCMetricsAPI {
                 case "RATE_LIMIT":
                     logger.warning("API rate limit exceeded: " + logMessage);
                     break;
+                case "BATCH_UPLOAD_ERROR":
+                    logger.warning("Batch upload error: " + logMessage);
+                    break;
+                case "SESSION_UPLOAD_ERROR":
+                    logger.warning("Session upload error: " + logMessage);
+                    break;
+                case "CUSTOM_EVENT_UPLOAD_ERROR":
+                    logger.warning("Custom event upload error: " + logMessage);
+                    break;
                 default:
                     logger.severe(logMessage);
                     break;
@@ -138,6 +147,73 @@ public class MCMetricsAPI {
     public CompletableFuture<List<ABTest>> getABTests() {
         return makeRequest("GET", "/ab_tests", null, ABTestResponse.class)
                 .thenApply(response -> ((ABTestResponse) response).data.ab_tests);
+    }
+
+    public CompletableFuture<Void> insertSessionsBatch(List<Session> sessions) {
+        return insertSessionsBatch(sessions, 10, 30); // Default: 10 sessions per batch, 30 second timeout
+    }
+
+    public CompletableFuture<Void> insertSessionsBatch(List<Session> sessions, int batchSize, int timeoutSeconds) {
+        if (sessions == null || sessions.isEmpty()) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        logger.info("Starting batch upload of " + sessions.size() + " sessions (batch size: " + batchSize + ")");
+
+        CompletableFuture<Void> result = new CompletableFuture<>();
+
+        executorService.submit(() -> {
+            try {
+                List<CompletableFuture<Void>> batchFutures = new ArrayList<>();
+
+                // Split sessions into batches
+                for (int i = 0; i < sessions.size(); i += batchSize) {
+                    int endIndex = Math.min(i + batchSize, sessions.size());
+                    List<Session> batch = sessions.subList(i, endIndex);
+
+                    // Process each session in the batch
+                    List<CompletableFuture<Void>> sessionFutures = batch.stream()
+                            .map(this::insertSession)
+                            .collect(java.util.stream.Collectors.toList());
+
+                    // Combine all futures in this batch
+                    CompletableFuture<Void> batchFuture = CompletableFuture.allOf(
+                            sessionFutures.toArray(new CompletableFuture[0]));
+
+                    batchFutures.add(batchFuture);
+
+                    // Add a small delay between batches to prevent overwhelming the server
+                    if (endIndex < sessions.size()) {
+                        try {
+                            Thread.sleep(1000); // 1 second delay between batches
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
+                }
+
+                // Wait for all batches to complete with timeout
+                CompletableFuture<Void> allBatches = CompletableFuture.allOf(
+                        batchFutures.toArray(new CompletableFuture[0]));
+
+                try {
+                    allBatches.get(timeoutSeconds, TimeUnit.SECONDS);
+                    logger.info("Successfully uploaded all " + sessions.size() + " sessions");
+                    result.complete(null);
+                } catch (Exception e) {
+                    logWithRateLimit("BATCH_UPLOAD_ERROR",
+                            "Batch session upload failed or timed out: " + e.getMessage());
+                    result.completeExceptionally(new MCMetricsException("Batch upload failed: " + e.getMessage()));
+                }
+
+            } catch (Exception e) {
+                logWithRateLimit("BATCH_UPLOAD_ERROR", "Error during batch session upload: " + e.getMessage());
+                result.completeExceptionally(new MCMetricsException("Batch upload error: " + e.getMessage()));
+            }
+        });
+
+        return result;
     }
 
     private <T, R> CompletableFuture<R> makeRequest(String method, String endpoint, T data, Class<R> responseClass) {
@@ -272,6 +348,11 @@ public class MCMetricsAPI {
     public int getErrorCount() {
         cleanupOldEntries(errorTimes);
         return errorTimes.size();
+    }
+
+    // Public method to allow plugins to use rate-limited logging
+    public void logErrorWithRateLimit(String errorType, String message) {
+        logWithRateLimit(errorType, message);
     }
 
     public static class MCMetricsException extends Exception {

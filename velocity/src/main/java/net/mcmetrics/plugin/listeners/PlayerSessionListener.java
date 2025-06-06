@@ -27,7 +27,8 @@ public class PlayerSessionListener {
     public void onPlayerLogin(LoginEvent event) {
         UUID playerId = event.getPlayer().getUniqueId();
 
-        if (isExempt(playerId)) return;
+        if (isExempt(playerId))
+            return;
 
         Session session = new Session();
         session.player_uuid = playerId;
@@ -45,7 +46,8 @@ public class PlayerSessionListener {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        if (isExempt(playerId)) return;
+        if (isExempt(playerId))
+            return;
 
         Session session = sessionManager.getSession(playerId);
         if (session == null) {
@@ -60,7 +62,8 @@ public class PlayerSessionListener {
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
 
-        if (isExempt(playerId)) return;
+        if (isExempt(playerId))
+            return;
 
         Session session = sessionManager.endSession(playerId);
         if (session == null) {
@@ -71,9 +74,15 @@ public class PlayerSessionListener {
         session.session_end = new Date();
 
         plugin.getApi().insertSession(session)
-                .thenRun(() -> plugin.getLogger().info("Session uploaded for player: " + playerId))
+                .thenRun(() -> {
+                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                        plugin.getLogger().info("Session uploaded for player: " + playerId);
+                    }
+                })
                 .exceptionally(e -> {
-                    plugin.getLogger().severe("Failed to upload session for player " + playerId + ": " + e.getMessage());
+                    // Use rate-limited logging for session upload errors
+                    plugin.getApi().logErrorWithRateLimit("SESSION_UPLOAD_ERROR",
+                            "Failed to upload session for player " + playerId + ": " + e.getMessage());
                     return null;
                 });
     }

@@ -6,10 +6,12 @@ import net.md_5.bungee.api.plugin.Plugin;
 import net.mcmetrics.shared.MCMetricsAPI;
 import net.mcmetrics.shared.config.ConfigManager;
 import net.mcmetrics.shared.models.ServerPing;
+import net.mcmetrics.shared.models.Session;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 
 import java.io.IOException;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public final class MCMetricsBungeePlugin extends Plugin {
@@ -52,10 +54,25 @@ public final class MCMetricsBungeePlugin extends Plugin {
     @Override
     public void onDisable() {
         if (sessionManager != null) {
-            sessionManager.endAllSessions().forEach(session -> {
-                session.session_end = new Date();
-                api.insertSession(session).join(); // Wait for each session to be inserted
-            });
+            List<Session> remainingSessions = sessionManager.endAllSessions();
+            if (!remainingSessions.isEmpty()) {
+                getLogger().info("Ending " + remainingSessions.size() + " remaining sessions...");
+
+                // Set end time for all sessions
+                Date endTime = new Date();
+                remainingSessions.forEach(session -> session.session_end = endTime);
+
+                // Upload sessions asynchronously in batches
+                if (api != null) {
+                    try {
+                        api.insertSessionsBatch(remainingSessions, 5, 20) // 5 sessions per batch, 20 second timeout
+                                .get(25, TimeUnit.SECONDS); // Wait up to 25 seconds for all uploads to complete
+                        getLogger().info("Successfully uploaded all remaining sessions during shutdown");
+                    } catch (Exception e) {
+                        getLogger().warning("Failed to upload some sessions during shutdown: " + e.getMessage());
+                    }
+                }
+            }
         }
 
         if (api != null) {

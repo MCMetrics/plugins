@@ -143,8 +143,10 @@ public class MCMetricsVelocityPlugin {
         ping.bedrock_player_count = bedrockCount;
         ping.java_player_count = ping.player_count - bedrockCount;
         api.insertServerPing(ping).thenRun(() -> {
-            if (configManager.getBoolean("main", "debug")) {
-                logger.info("Server ping recorded successfully.");
+            if (isDebug()) {
+                if (!isSilent()) {
+                    logger.info("Server ping recorded successfully.");
+                }
             }
         });
     }
@@ -169,6 +171,16 @@ public class MCMetricsVelocityPlugin {
 
     public int getActiveSessionCount() {
         return sessionManager.getActiveSessionCount();
+    }
+
+    public boolean isDebug() {
+        String logLevel = configManager.getString("main", "log-level");
+        return logLevel != null && logLevel.equalsIgnoreCase("debug");
+    }
+
+    public boolean isSilent() {
+        String logLevel = configManager.getString("main", "log-level");
+        return logLevel != null && logLevel.equalsIgnoreCase("silent");
     }
 
     public ConfigManager getConfigManager() {

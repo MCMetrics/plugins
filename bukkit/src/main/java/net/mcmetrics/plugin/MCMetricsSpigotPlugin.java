@@ -164,8 +164,10 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
             ping.java_player_count = ping.player_count - ping.bedrock_player_count;
 
             api.insertServerPing(ping).thenRun(() -> {
-                if (configManager.getBoolean("main", "debug")) {
-                    getLogger().info("Server ping recorded successfully.");
+                if (isDebug()) {
+                    if (!isSilent()) {
+                        getLogger().info("Server ping recorded successfully.");
+                    }
                 }
             });
         }, 0, 10 * 20); // Run every 10 seconds (200 ticks)
@@ -211,6 +213,16 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
         } catch (IOException e) {
             getLogger().severe("Failed to reload configuration: " + e.getMessage());
         }
+    }
+
+    public boolean isDebug() {
+        String logLevel = configManager.getString("main", "log-level");
+        return logLevel != null && logLevel.equalsIgnoreCase("debug");
+    }
+
+    public boolean isSilent() {
+        String logLevel = configManager.getString("main", "log-level");
+        return logLevel != null && logLevel.equalsIgnoreCase("silent");
     }
 
     public int getActiveSessionCount() {

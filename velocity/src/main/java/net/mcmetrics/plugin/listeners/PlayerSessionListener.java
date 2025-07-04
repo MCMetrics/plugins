@@ -75,7 +75,7 @@ public class PlayerSessionListener {
 
         plugin.getApi().insertSession(session)
                 .thenRun(() -> {
-                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                    if (plugin.isDebug()) {
                         plugin.getLogger().info("Session uploaded for player: " + playerId);
                     }
                 })

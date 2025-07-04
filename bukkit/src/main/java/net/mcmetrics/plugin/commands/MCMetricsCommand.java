@@ -65,6 +65,8 @@ public class MCMetricsCommand implements CommandExecutor {
                 return handleABTests(sender);
             case "abtest":
                 return handleABTest(sender, args);
+            case "ignore":
+                return handleIgnore(sender, args);
             case "help":
                 sendHelpMessage(sender);
                 return true;
@@ -416,6 +418,40 @@ public class MCMetricsCommand implements CommandExecutor {
         return true;
     }
 
+    private boolean handleIgnore(CommandSender sender, String[] args) {
+        if (args.length != 2) {
+            sender.sendMessage(colorize("&cUsage: /mcmetrics ignore <player name or uuid>"));
+            return true;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            try {
+                UUID uuid = UUID.fromString(args[1]);
+                target = Bukkit.getPlayer(uuid);
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+
+        if (target == null) {
+            sender.sendMessage(colorize("&cPlayer not found or not online."));
+            return true;
+        }
+
+        UUID playerUUID = target.getUniqueId();
+        SessionManager sessionManager = plugin.getSessionManager();
+        Session session = sessionManager.endSession(playerUUID);
+
+        if (session == null) {
+            sender.sendMessage(colorize("&cNo active session found for this player."));
+            return true;
+        }
+
+        sender.sendMessage(colorize(PRIMARY_COLOR + "Player " + target.getName() + " is now being ignored for this session."));
+
+        return true;
+    }
+
     private void sendHelpMessage(CommandSender sender) {
         sender.sendMessage(
                 colorize(PRIMARY_COLOR + "&lMCMetrics Commands &7(v" + plugin.getDescription().getVersion() + ")"));
@@ -429,6 +465,8 @@ public class MCMetricsCommand implements CommandExecutor {
         sender.sendMessage(colorize("  &7- Trigger a command-based A/B test"));
         sender.sendMessage(colorize(PRIMARY_COLOR + "/mcmetrics info &f<player name or uuid>"));
         sender.sendMessage(colorize("  &7- Show player information"));
+        sender.sendMessage(colorize(PRIMARY_COLOR + "/mcmetrics ignore &f<player name or uuid>"));
+        sender.sendMessage(colorize("  &7- Ignore a player for the current session"));
         sender.sendMessage(colorize(PRIMARY_COLOR + "/mcmetrics payment &f<platform> <player_uuid>"));
         sender.sendMessage(colorize("  &f<transaction_id> <amount> <currency>"));
         sender.sendMessage(colorize("  &7- Record a payment"));

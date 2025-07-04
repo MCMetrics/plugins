@@ -189,16 +189,18 @@ public class MCMetricsCommand implements CommandExecutor {
 
         api.insertCustomEvent(event)
                 .thenRun(() -> {
-                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                    if (plugin.isDebug()) {
                         sender.sendMessage(colorize(PRIMARY_COLOR + "Custom event recorded successfully."));
                     }
                     if (!(sender instanceof ConsoleCommandSender)
-                            || plugin.getConfigManager().getBoolean("main", "debug")) {
-                        plugin.getLogger().info("Custom event recorded: " + event.event_type);
+                            || plugin.isDebug()) {
+                        if (!plugin.isSilent()) {
+                            plugin.getLogger().info("Custom event recorded: " + event.event_type);
+                        }
                     }
                 })
                 .exceptionally(e -> {
-                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                    if (plugin.isDebug()) {
                         sender.sendMessage(colorize("&cFailed to record custom event. Check console for details."));
                     }
                     return null;

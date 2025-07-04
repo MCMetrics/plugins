@@ -184,16 +184,18 @@ public class MCMetricsCommand implements SimpleCommand {
 
         api.insertCustomEvent(event)
                 .thenRun(() -> {
-                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                    if (plugin.isDebug()) {
                         source.sendMessage(Component.text("Custom event recorded successfully.").color(PRIMARY_COLOR));
                     }
                     if (!source.equals(plugin.getServer().getConsoleCommandSource()) ||
-                            plugin.getConfigManager().getBoolean("main", "debug")) {
-                        plugin.getLogger().info("Custom event recorded: " + event.event_type);
+                            plugin.isDebug()) {
+                        if (!plugin.isSilent()) {
+                            plugin.getLogger().info("Custom event recorded: " + event.event_type);
+                        }
                     }
                 })
                 .exceptionally(e -> {
-                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                    if (plugin.isDebug()) {
                         source.sendMessage(Component.text("Failed to record custom event. Check console for details.")
                                 .color(NamedTextColor.RED));
                     }

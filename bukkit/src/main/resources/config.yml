@@ -31,8 +31,10 @@ playercount-multiplier: 1.0
 # ORDER OF OPERATIONS: playercount-multiplier * playercount - playercount-subtract
 playercount-subtract: 0
 
-# Debug mode - enables additional logging
-debug: false
+# Log level - default, debug, or silent
+# Debug: more verbose logging
+# Silent: Avoids most console logs, only critical errors or warnings
+log-level: default
 
 # Disable console event listener - set to true to disable console event tracking completely
 disable-console-listener: false

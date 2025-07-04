@@ -135,7 +135,7 @@ public class ABTestManager {
             }
             session.ab_test_exposures.add(exposure);
         } else {
-            if (plugin.getConfigManager().getBoolean("main", "debug")) {
+            if (plugin.isDebug()) {
                 logger.warning("Failed to record A/B test exposure: session not found for player " + player.getName());
             }
         }

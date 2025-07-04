@@ -111,8 +111,10 @@ public final class MCMetricsBungeePlugin extends Plugin {
             ping.java_player_count = ping.player_count - bedrockCount;
 
             api.insertServerPing(ping).thenRun(() -> {
-                if (configManager.getBoolean("main", "debug")) {
-                    getLogger().info("Server ping recorded successfully.");
+                if (isDebug()) {
+                    if (!isSilent()) {
+                        getLogger().info("Server ping recorded successfully.");
+                    }
                 }
             });
         }, 0, 60, TimeUnit.SECONDS);
@@ -138,6 +140,16 @@ public final class MCMetricsBungeePlugin extends Plugin {
 
     public int getActiveSessionCount() {
         return sessionManager.getActiveSessionCount();
+    }
+
+    public boolean isDebug() {
+        String logLevel = configManager.getString("main", "log-level");
+        return logLevel != null && logLevel.equalsIgnoreCase("debug");
+    }
+
+    public boolean isSilent() {
+        String logLevel = configManager.getString("main", "log-level");
+        return logLevel != null && logLevel.equalsIgnoreCase("silent");
     }
 
     public ConfigManager getConfigManager() {

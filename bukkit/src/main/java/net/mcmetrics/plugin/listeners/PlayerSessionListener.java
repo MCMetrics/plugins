@@ -88,7 +88,7 @@ public class PlayerSessionListener implements Listener {
 
         plugin.getApi().insertSession(session)
                 .thenAccept(v -> {
-                    if (plugin.getConfigManager().getBoolean("main", "debug")) {
+                    if (plugin.isDebug()) {
                         plugin.getLogger().info("Session uploaded for player: " + playerId);
                     }
                     // Only add to known players if this was a potential legacy player and upload

@@ -150,7 +150,13 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
 
             ServerPing ping = new ServerPing();
             ping.time = new Date();
-            ping.player_count = getServer().getOnlinePlayers().size();
+
+            double playerCountMultiplier = configManager.getDouble("main", "playercount-multiplier");
+            int playerCountSubtract = configManager.getInt("main", "playercount-subtract");
+            int onlinePlayers = getServer().getOnlinePlayers().size();
+            int finalPlayerCount = (int) Math.round(onlinePlayers * playerCountMultiplier) - playerCountSubtract;
+
+            ping.player_count = Math.max(0, finalPlayerCount);
             ping.bedrock_player_count = (int) getServer().getOnlinePlayers().stream()
                     .map(player -> player.getUniqueId().toString())
                     .filter(uuid -> uuid.startsWith("00000000-0000-0000"))

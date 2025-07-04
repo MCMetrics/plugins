@@ -20,6 +20,17 @@ custom-events:
 exempt:
   players: []
 
+# Playercount multiplier - multiply the playercount by this value.
+# This is useful to "undo" spoofer plugins that fake the playercount.
+# For example, if your spoofer multiplies the playercount by 10, you can set this to 0.1.
+playercount-multiplier: 1.0
+
+# Playercount subtract - subtract this value from the playercount.
+# This is useful to "undo" spoofer plugins that fake the playercount.
+# For example, if your spoofer adds 10 to the playercount, you can set this to 10.
+# ORDER OF OPERATIONS: playercount-multiplier * playercount - playercount-subtract
+playercount-subtract: 0
+
 # Debug mode - enables additional logging
 debug: false
 

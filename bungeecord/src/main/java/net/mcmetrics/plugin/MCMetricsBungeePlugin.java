@@ -91,7 +91,13 @@ public final class MCMetricsBungeePlugin extends Plugin {
 
             ServerPing ping = new ServerPing();
             ping.time = new Date();
-            ping.player_count = getProxy().getOnlineCount();
+
+            double playerCountMultiplier = configManager.getDouble("main", "playercount-multiplier");
+            int playerCountSubtract = configManager.getInt("main", "playercount-subtract");
+            int onlinePlayers = getProxy().getOnlineCount();
+            int finalPlayerCount = (int) Math.round(onlinePlayers * playerCountMultiplier) - playerCountSubtract;
+
+            ping.player_count = Math.max(0, finalPlayerCount);
 
             // Count Bedrock players by UUID format
             int bedrockCount = 0;

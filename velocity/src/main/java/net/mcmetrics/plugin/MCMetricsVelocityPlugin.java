@@ -127,7 +127,13 @@ public class MCMetricsVelocityPlugin {
 
         ServerPing ping = new ServerPing();
         ping.time = new Date();
-        ping.player_count = server.getPlayerCount();
+
+        double playerCountMultiplier = configManager.getDouble("main", "playercount-multiplier");
+        int playerCountSubtract = configManager.getInt("main", "playercount-subtract");
+        int onlinePlayers = server.getPlayerCount();
+        int finalPlayerCount = (int) Math.round(onlinePlayers * playerCountMultiplier) - playerCountSubtract;
+
+        ping.player_count = Math.max(0, finalPlayerCount);
 
         // Count Bedrock players by UUID format
         int bedrockCount = (int) server.getAllPlayers().stream()

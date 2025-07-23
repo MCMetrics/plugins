@@ -141,7 +141,7 @@ public class MCMetricsVelocityPlugin {
                 .count();
 
         ping.bedrock_player_count = bedrockCount;
-        ping.java_player_count = ping.player_count - bedrockCount;
+        ping.java_player_count = Math.max(0, ping.player_count - bedrockCount);
         api.insertServerPing(ping).thenRun(() -> {
             if (isDebug()) {
                 if (!isSilent()) {

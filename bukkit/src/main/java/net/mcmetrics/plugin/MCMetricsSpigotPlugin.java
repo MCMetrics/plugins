@@ -161,7 +161,7 @@ public class MCMetricsSpigotPlugin extends JavaPlugin {
                     .map(player -> player.getUniqueId().toString())
                     .filter(uuid -> uuid.startsWith("00000000-0000-0000"))
                     .count();
-            ping.java_player_count = ping.player_count - ping.bedrock_player_count;
+            ping.java_player_count = Math.max(0, ping.player_count - ping.bedrock_player_count);
 
             api.insertServerPing(ping).thenRun(() -> {
                 if (isDebug()) {

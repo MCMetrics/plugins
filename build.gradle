@@ -7,7 +7,7 @@ plugins {
 defaultTasks("shadowJar")
 
 group = 'net.mcmetrics'
-version = '2.8.0'
+version = '2.9.1'
 
 subprojects {
     apply plugin: 'java'
